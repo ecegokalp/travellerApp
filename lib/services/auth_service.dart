@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -31,27 +32,32 @@ class AuthService {
     required String fullName,
     required String username,
   }) async {
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    debugPrint('DEBUG: signUp metodu tetiklendi. Email: $email');
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      debugPrint('DEBUG: FirebaseAuth hesabı oluşturuldu: ${credential.user?.uid}');
 
-    // Save extra user data to Firestore
-    if (credential.user != null) {
-      await _firestore.collection('users').doc(credential.user!.uid).set({
-        'uid': credential.user!.uid,
-        'email': email,
-        'fullName': fullName,
-        'username': username,
-        'createdAt': FieldValue.serverTimestamp(),
-        'photoUrl': '',
-      });
-
-      // Update display name
-      await credential.user!.updateDisplayName(fullName);
+      if (credential.user != null) {
+        debugPrint('DEBUG: Firestore\'a yazılıyor...');
+        await _firestore.collection('users').doc(credential.user!.uid).set({
+          'uid': credential.user!.uid,
+          'email': email,
+          'fullName': fullName,
+          'username': username,
+          'createdAt': FieldValue.serverTimestamp(),
+          'photoUrl': '',
+        });
+        debugPrint('DEBUG: Firestore kaydı başarılı!');
+        await credential.user!.updateDisplayName(fullName);
+      }
+      return credential;
+    } catch (e) {
+      debugPrint('DEBUG: AuthService signUp Hatası: $e');
+      rethrow;
     }
-
-    return credential;
   }
 
   /// Sign in with Google

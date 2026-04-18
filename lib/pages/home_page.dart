@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'saved_trips_page.dart';
+import 'discover_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -218,6 +220,12 @@ class _HomePageState extends State<HomePage> {
                           subtitle: 'Find places',
                           color: _coral,
                           bgColor: const Color(0xFFFFE5E5),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const DiscoverPage()),
+                            );
+                          },
                         ),
                         const SizedBox(width: 14),
                         _buildFeatureCard(
@@ -226,6 +234,12 @@ class _HomePageState extends State<HomePage> {
                           subtitle: 'Your trips',
                           color: const Color(0xFFFF8A65),
                           bgColor: const Color(0xFFFFF3E0),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SavedTripsPage()),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -238,6 +252,9 @@ class _HomePageState extends State<HomePage> {
                           subtitle: 'Connect',
                           color: _teal,
                           bgColor: const Color(0xFFE8F5E9),
+                          onTap: () {
+                            // Community action
+                          },
                         ),
                         const SizedBox(width: 14),
                         _buildFeatureCard(
@@ -246,6 +263,9 @@ class _HomePageState extends State<HomePage> {
                           subtitle: 'Preferences',
                           color: const Color(0xFF7C4DFF),
                           bgColor: const Color(0xFFEDE7F6),
+                          onTap: () {
+                            // Settings action
+                          },
                         ),
                       ],
                     ),
@@ -304,50 +324,54 @@ class _HomePageState extends State<HomePage> {
     required String subtitle,
     required Color color,
     required Color bgColor,
+    required VoidCallback onTap,
   }) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(8),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(12),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(8),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
-              child: Icon(icon, size: 24, color: color),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: _darkText,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 24, color: color),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 12,
-                color: _warmGray,
+              const SizedBox(height: 14),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _darkText,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: _warmGray,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
