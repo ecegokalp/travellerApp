@@ -6,6 +6,7 @@ import 'discover_page.dart';
 import 'settings_page.dart';
 import 'planner_page.dart';
 import 'documents_page.dart';
+import 'trip_details_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -85,21 +86,62 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: Row(
                 children: [
-                  // Avatar
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: _coral.withAlpha(30),
-                      borderRadius: BorderRadius.circular(16),
+                  // Avatar with PopupMenu
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      cardColor: cardColor,
                     ),
-                    child: Center(
-                      child: Text(
-                        _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: _coral,
+                    child: PopupMenuButton<String>(
+                      offset: const Offset(0, 56),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      onSelected: (value) async {
+                        if (value == 'settings') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SettingsPage()),
+                          );
+                        } else if (value == 'logout') {
+                          await _authService.signOut();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'settings',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.settings_outlined, size: 20, color: _coral),
+                              const SizedBox(width: 12),
+                              Text('Settings', style: TextStyle(color: textColor)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'logout',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.logout_rounded, size: 20, color: Colors.redAccent),
+                              const SizedBox(width: 12),
+                              const Text('Sign Out', style: TextStyle(color: Colors.redAccent)),
+                            ],
+                          ),
+                        ),
+                      ],
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: _coral.withAlpha(30),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Text(
+                            _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: _coral,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -129,53 +171,23 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-                  // Budget and Sign Out
-                  Row(
-                    children: [
-                      if (_totalPlannedBudget > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          margin: const EdgeInsets.only(right: 12),
-                          decoration: BoxDecoration(
-                            color: _coral.withAlpha(isDarkMode ? 40 : 20),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _coral.withAlpha(50)),
-                          ),
-                          child: Text(
-                            '${_totalPlannedBudget.toStringAsFixed(0)} ₺',
-                            style: const TextStyle(
-                              color: _coral,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(isDarkMode ? 30 : 8),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: IconButton(
-                          onPressed: () async {
-                            await _authService.signOut();
-                          },
-                          icon: const Icon(
-                            Icons.logout_rounded,
-                            color: _coral,
-                            size: 22,
-                          ),
-                          tooltip: 'Sign Out',
+                  if (_totalPlannedBudget > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _coral.withAlpha(isDarkMode ? 40 : 20),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _coral.withAlpha(50)),
+                      ),
+                      child: Text(
+                        '${_totalPlannedBudget.toStringAsFixed(0)} ₺',
+                        style: const TextStyle(
+                          color: _coral,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
             ),
@@ -186,6 +198,7 @@ class _HomePageState extends State<HomePage> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Hero Card (Ready to Explore)
                     GestureDetector(
@@ -262,16 +275,17 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 28),
 
+                    // My Trips Section (From trips collection)
+                    _buildMyTripsSection(context, textColor, secondaryTextColor),
+                    const SizedBox(height: 28),
+
                     // Quick Actions Title
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Quick Actions',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: textColor,
-                        ),
+                    Text(
+                      'Quick Actions',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -298,7 +312,7 @@ class _HomePageState extends State<HomePage> {
                           context,
                           icon: Icons.bookmark_border_rounded,
                           label: 'Saved',
-                          subtitle: 'Your trips',
+                          subtitle: 'Liked places',
                           color: const Color(0xFFFF8A65),
                           bgColor: const Color(0xFFFF8A65).withAlpha(30),
                           onTap: () {
@@ -339,26 +353,6 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        _buildFeatureCard(
-                          context,
-                          icon: Icons.settings_outlined,
-                          label: 'Settings',
-                          subtitle: 'Preferences',
-                          color: Colors.blueGrey,
-                          bgColor: Colors.blueGrey.withAlpha(30),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const SettingsPage()),
-                            );
-                          },
-                        ),
-                        const Spacer(),
                       ],
                     ),
                     const SizedBox(height: 30),
@@ -407,6 +401,131 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMyTripsSection(BuildContext context, Color textColor, Color secondaryTextColor) {
+    final user = _authService.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'My Trips',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: textColor,
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 100,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('trips')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+              }
+
+              final docs = snapshot.data?.docs ?? [];
+              if (docs.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _warmGray.withOpacity(0.1)),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'No planned trips yet. Start exploring!',
+                      style: TextStyle(color: secondaryTextColor, fontSize: 13),
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
+                  final city = data['city'] ?? 'Unknown';
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TripDetailsPage(tripData: data),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 140,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        color: _coral,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _coral.withAlpha(60),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            right: -10,
+                            top: -10,
+                            child: Icon(Icons.flight_takeoff, color: Colors.white.withOpacity(0.2), size: 60),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  city,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'See Details',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
