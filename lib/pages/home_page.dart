@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'saved_trips_page.dart';
 import 'discover_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -44,8 +45,14 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = isDarkMode ? Colors.white : _darkText;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : _warmGray;
+
     return Scaffold(
-      backgroundColor: _cream,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -59,7 +66,7 @@ class _HomePageState extends State<HomePage> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFE5E5),
+                      color: _coral.withAlpha(30),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Center(
@@ -80,20 +87,20 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Welcome back,',
                           style: TextStyle(
                             fontSize: 13,
-                            color: _warmGray,
+                            color: secondaryTextColor,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           _displayName.isNotEmpty ? _displayName : 'Traveller',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
-                            color: _darkText,
+                            color: textColor,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -103,11 +110,11 @@ class _HomePageState extends State<HomePage> {
                   // Sign Out
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withAlpha(8),
+                          color: Colors.black.withAlpha(isDarkMode ? 30 : 8),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
                         ),
@@ -198,14 +205,14 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 28),
 
                     // Quick Actions Title
-                    const Align(
+                    Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'Quick Actions',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
-                          color: _darkText,
+                          color: textColor,
                         ),
                       ),
                     ),
@@ -215,11 +222,12 @@ class _HomePageState extends State<HomePage> {
                     Row(
                       children: [
                         _buildFeatureCard(
+                          context,
                           icon: Icons.map_outlined,
                           label: 'Discover',
                           subtitle: 'Find places',
                           color: _coral,
-                          bgColor: const Color(0xFFFFE5E5),
+                          bgColor: _coral.withAlpha(30),
                           onTap: () {
                             Navigator.push(
                               context,
@@ -229,11 +237,12 @@ class _HomePageState extends State<HomePage> {
                         ),
                         const SizedBox(width: 14),
                         _buildFeatureCard(
+                          context,
                           icon: Icons.bookmark_border_rounded,
                           label: 'Saved',
                           subtitle: 'Your trips',
                           color: const Color(0xFFFF8A65),
-                          bgColor: const Color(0xFFFFF3E0),
+                          bgColor: const Color(0xFFFF8A65).withAlpha(30),
                           onTap: () {
                             Navigator.push(
                               context,
@@ -247,24 +256,29 @@ class _HomePageState extends State<HomePage> {
                     Row(
                       children: [
                         _buildFeatureCard(
+                          context,
                           icon: Icons.people_outline_rounded,
                           label: 'Community',
                           subtitle: 'Connect',
                           color: _teal,
-                          bgColor: const Color(0xFFE8F5E9),
+                          bgColor: _teal.withAlpha(30),
                           onTap: () {
                             // Community action
                           },
                         ),
                         const SizedBox(width: 14),
                         _buildFeatureCard(
+                          context,
                           icon: Icons.settings_outlined,
                           label: 'Settings',
                           subtitle: 'Preferences',
                           color: const Color(0xFF7C4DFF),
-                          bgColor: const Color(0xFFEDE7F6),
+                          bgColor: const Color(0xFF7C4DFF).withAlpha(30),
                           onTap: () {
-                            // Settings action
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SettingsPage()),
+                            );
                           },
                         ),
                       ],
@@ -276,11 +290,11 @@ class _HomePageState extends State<HomePage> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: cardColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withAlpha(8),
+                            color: Colors.black.withAlpha(isDarkMode ? 30 : 8),
                             blurRadius: 16,
                             offset: const Offset(0, 4),
                           ),
@@ -288,18 +302,18 @@ class _HomePageState extends State<HomePage> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.email_outlined,
-                            color: _warmGray,
+                            color: secondaryTextColor,
                             size: 20,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _email,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: _warmGray,
+                                color: secondaryTextColor,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -318,7 +332,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildFeatureCard({
+  Widget _buildFeatureCard(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String subtitle,
@@ -326,17 +341,22 @@ class _HomePageState extends State<HomePage> {
     required Color bgColor,
     required VoidCallback onTap,
   }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = isDarkMode ? Colors.white : _darkText;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : _warmGray;
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardColor,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(8),
+                color: Colors.black.withAlpha(isDarkMode ? 30 : 8),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -356,18 +376,18 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 14),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: _darkText,
+                  color: textColor,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: _warmGray,
+                  color: secondaryTextColor,
                 ),
               ),
             ],
