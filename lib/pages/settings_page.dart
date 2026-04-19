@@ -326,7 +326,7 @@ class _SettingsPageState extends State<SettingsPage> {
           color: iconBgColor,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(icon, color: _coral, size: 22),
+        child: Icon(icon, color: _coral, size: 22),
       ),
       title: Text(
         title,

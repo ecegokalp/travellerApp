@@ -56,15 +56,21 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = isDarkMode ? Colors.white : _darkText;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : _warmGray;
+
     return Scaffold(
-      backgroundColor: _cream,
+      backgroundColor: backgroundColor,
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
             heroTag: 'top_btn',
             onPressed: _scrollToTop,
-            backgroundColor: Colors.white,
+            backgroundColor: isDarkMode ? const Color(0xFF2C2C2C) : Colors.white,
             elevation: 4,
             mini: false,
             child: const Icon(Icons.arrow_upward_rounded, color: _coral),
@@ -97,28 +103,51 @@ class _DiscoverPageState extends State<DiscoverPage> {
                           onTap: () => Navigator.pop(context),
                           child: Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                            child: const Icon(Icons.arrow_back_ios_new, size: 20, color: _darkText),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(Icons.arrow_back_ios_new, size: 20, color: textColor),
                           ),
                         ),
                         const SizedBox(width: 15),
-                        const Text('Discover', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _darkText)),
+                        Text(
+                          'Discover',
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textColor),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    const Text('Explore Worlds', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: _darkText, letterSpacing: -1)),
+                    Text(
+                      'Explore Worlds',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        color: textColor,
+                        letterSpacing: -1,
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                      child: const TextField(
-                        decoration: InputDecoration(hintText: 'Search destinations...', border: InputBorder.none, icon: Icon(Icons.search, color: _coral)),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: TextField(
+                        style: TextStyle(color: textColor),
+                        decoration: InputDecoration(
+                          hintText: 'Search destinations...',
+                          hintStyle: TextStyle(color: secondaryTextColor),
+                          border: InputBorder.none,
+                          icon: const Icon(Icons.search, color: _coral),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              // Kategoriler için KESİN ÇÖZÜM: Row içinde Map
+              // Kategoriler
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -135,13 +164,23 @@ class _DiscoverPageState extends State<DiscoverPage> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           decoration: BoxDecoration(
-                            color: isSelected ? _coral : Colors.white,
+                            color: isSelected ? _coral : cardColor,
                             borderRadius: BorderRadius.circular(15),
-                            boxShadow: [if (isSelected) BoxShadow(color: _coral.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))],
+                            boxShadow: [
+                              if (isSelected)
+                                BoxShadow(
+                                  color: _coral.withOpacity(0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                )
+                            ],
                           ),
                           child: Text(
                             '${category['icon']} ${category['name']}',
-                            style: TextStyle(color: isSelected ? Colors.white : _darkText, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : textColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -165,9 +204,23 @@ class _DiscoverPageState extends State<DiscoverPage> {
   }
 
   Widget _buildCard(Map<String, String> d) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = isDarkMode ? Colors.white : _darkText;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : _warmGray;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05),
+            blurRadius: 10,
+          )
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -183,17 +236,32 @@ class _DiscoverPageState extends State<DiscoverPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(d['title']!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Row(children: [const Icon(Icons.star, color: Colors.amber, size: 18), Text(d['rating']!, style: const TextStyle(fontWeight: FontWeight.bold))]),
+                    Text(
+                      d['title']!,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          d['rating']!,
+                          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(d['subtitle']!, style: const TextStyle(color: _warmGray)),
+                Text(d['subtitle']!, style: TextStyle(color: secondaryTextColor)),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('${d['price']}/day', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _coral)),
+                    Text(
+                      '${d['price']}/day',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _coral),
+                    ),
                     Row(
                       children: [
                         IconButton(
@@ -222,7 +290,11 @@ class _DiscoverPageState extends State<DiscoverPage> {
                               ),
                             );
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: _coral, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _coral,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                           child: const Text('Details'),
                         ),
                       ],
