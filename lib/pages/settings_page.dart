@@ -179,7 +179,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'Notifications',
                     trailing: Switch.adaptive(
                       value: _notificationsEnabled,
-                      activeColor: _coral,
+                      activeThumbColor: _coral,
+                      activeTrackColor: _coral.withAlpha(100),
                       onChanged: (value) {
                         setState(() => _notificationsEnabled = value);
                       },
@@ -192,7 +193,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'Dark Mode',
                     trailing: Switch.adaptive(
                       value: isDarkMode,
-                      activeColor: _coral,
+                      activeThumbColor: _coral,
+                      activeTrackColor: _coral.withAlpha(100),
                       onChanged: (value) {
                         themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
                       },
