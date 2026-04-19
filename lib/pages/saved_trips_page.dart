@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/auth_service.dart';
 
 class SavedTripsPage extends StatelessWidget {
   const SavedTripsPage({super.key});
@@ -10,6 +12,8 @@ class SavedTripsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authService = AuthService();
+
     return Scaffold(
       backgroundColor: _cream,
       appBar: AppBar(
@@ -30,33 +34,53 @@ class SavedTripsPage extends StatelessWidget {
           ),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          _buildTripCard(
-            context,
-            'Cappadocia, Turkey',
-            'Hot air balloons & fairy chimneys',
-            'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=500',
-            '4.9',
-          ),
-          const SizedBox(height: 20),
-          _buildTripCard(
-            context,
-            'Bali, Indonesia',
-            'Tropical paradise and temples',
-            'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=500',
-            '4.8',
-          ),
-          const SizedBox(height: 20),
-          _buildTripCard(
-            context,
-            'Santorini, Greece',
-            'Sunset views and white houses',
-            'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?q=80&w=500',
-            '4.7',
-          ),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: authService.getSavedTrips(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: _coral));
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Something went wrong'));
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+
+          if (docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.bookmark_border_rounded, size: 64, color: _warmGray.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No saved trips yet',
+                    style: TextStyle(color: _warmGray, fontSize: 16),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(24),
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: _buildTripCard(
+                  context,
+                  data['title'] ?? '',
+                  data['subtitle'] ?? '',
+                  data['image'] ?? '',
+                  data['rating'] ?? '0.0',
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

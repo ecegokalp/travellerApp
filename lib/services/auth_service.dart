@@ -108,4 +108,32 @@ class AuthService {
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
+
+  /// Save a trip to Firestore
+  Future<void> saveTrip(Map<String, String> trip) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('saved_trips')
+        .add({
+      ...trip,
+      'savedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Get saved trips from Firestore
+  Stream<QuerySnapshot> getSavedTrips() {
+    final user = currentUser;
+    if (user == null) return const Stream.empty();
+
+    return _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('saved_trips')
+        .orderBy('savedAt', descending: true)
+        .snapshots();
+  }
 }

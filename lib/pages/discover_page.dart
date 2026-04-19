@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import 'details_page.dart';
-import 'details_page.dart';
+import 'saved_trips_page.dart';
 
 class DiscoverPage extends StatefulWidget {
   const DiscoverPage({super.key});
@@ -10,6 +11,7 @@ class DiscoverPage extends StatefulWidget {
 }
 
 class _DiscoverPageState extends State<DiscoverPage> {
+  final AuthService _authService = AuthService();
   final ScrollController _scrollController = ScrollController();
   static const _coral = Color(0xFFFF6B6B);
   static const _cream = Color(0xFFFFF8F0);
@@ -192,17 +194,38 @@ class _DiscoverPageState extends State<DiscoverPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('${d['price']}/day', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _coral)),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DestinationDetailPage(destination: d),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: _coral, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      child: const Text('Details'),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () async {
+                            await _authService.saveTrip({
+                              'title': d['title']!,
+                              'subtitle': d['subtitle']!,
+                              'image': d['image']!,
+                              'rating': d['rating']!,
+                            });
+                            if (mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const SavedTripsPage()),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.bookmark_border, color: _coral),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DestinationDetailPage(destination: d),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: _coral, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          child: const Text('Details'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
