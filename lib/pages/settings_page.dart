@@ -205,6 +205,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     context,
                     icon: Icons.language_rounded,
                     title: 'Language',
+
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
