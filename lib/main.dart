@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'pages/login_page.dart';
-import 'pages/home_page.dart';
+import 'pages/main_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (_, ThemeMode currentMode, __) {
         return MaterialApp(
-          title: 'Traveller',
+          title: 'Wander',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
               }
 
               if (snapshot.hasData) {
-                return const HomePage();
+                return const MainScreen();
               }
 
               return const LoginPage();

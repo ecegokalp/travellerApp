@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
-import 'saved_trips_page.dart';
-import 'discover_page.dart';
 import 'settings_page.dart';
 import 'planner_page.dart';
-import 'documents_page.dart';
 import 'trip_details_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,11 +15,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   String _displayName = '';
-  String _email = '';
   double _totalPlannedBudget = 0;
 
   static const _coral = Color(0xFFFF6B6B);
-  static const _teal = Color(0xFF2D6A4F);
   static const _warmGray = Color(0xFF6B7280);
   static const _darkText = Color(0xFF1F2937);
 
@@ -40,7 +35,6 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           _displayName = profile?['fullName'] ?? user.displayName ?? 'Traveller';
-          _email = user.email ?? '';
         });
       }
     }
@@ -277,123 +271,9 @@ class _HomePageState extends State<HomePage> {
 
                     // My Trips Section (From trips collection)
                     _buildMyTripsSection(context, textColor, secondaryTextColor),
-                    const SizedBox(height: 28),
 
-                    // Quick Actions Title
-                    Text(
-                      'Quick Actions',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Feature Cards Grid
-                    Row(
-                      children: [
-                        _buildFeatureCard(
-                          context,
-                          icon: Icons.map_outlined,
-                          label: 'Discover',
-                          subtitle: 'Find places',
-                          color: _coral,
-                          bgColor: _coral.withAlpha(30),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const DiscoverPage()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 14),
-                        _buildFeatureCard(
-                          context,
-                          icon: Icons.bookmark_border_rounded,
-                          label: 'Saved',
-                          subtitle: 'Liked places',
-                          color: const Color(0xFFFF8A65),
-                          bgColor: const Color(0xFFFF8A65).withAlpha(30),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const SavedTripsPage()),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        _buildFeatureCard(
-                          context,
-                          icon: Icons.people_outline_rounded,
-                          label: 'Community',
-                          subtitle: 'Connect',
-                          color: _teal,
-                          bgColor: _teal.withAlpha(30),
-                          onTap: () {
-                            // Community action
-                          },
-                        ),
-                        const SizedBox(width: 14),
-                        _buildFeatureCard(
-                          context,
-                          icon: Icons.folder_open_rounded,
-                          label: 'Documents',
-                          subtitle: 'My Files',
-                          color: const Color(0xFF7C4DFF),
-                          bgColor: const Color(0xFF7C4DFF).withAlpha(30),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const DocumentsPage()),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 30),
-
-                    // User Info Card
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(isDarkMode ? 30 : 8),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.email_outlined,
-                            color: secondaryTextColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _email,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: secondaryTextColor,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 30),
+                    // Bottom padding for floating navbar
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
@@ -529,68 +409,4 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildFeatureCard(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String subtitle,
-    required Color color,
-    required Color bgColor,
-    required VoidCallback onTap,
-  }) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = Theme.of(context).cardColor;
-    final textColor = isDarkMode ? Colors.white : _darkText;
-    final secondaryTextColor = isDarkMode ? Colors.white70 : _warmGray;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(isDarkMode ? 30 : 8),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, size: 24, color: color),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: secondaryTextColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
