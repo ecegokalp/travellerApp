@@ -15,7 +15,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   String _displayName = '';
-  double _totalPlannedBudget = 0;
 
   static const _coral = Color(0xFFFF6B6B);
   static const _warmGray = Color(0xFF6B7280);
@@ -25,7 +24,6 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadUserData();
-    _listenToTotalBudget();
   }
 
   Future<void> _loadUserData() async {
@@ -40,27 +38,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _listenToTotalBudget() {
-    final user = _authService.currentUser;
-    if (user != null) {
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('trips')
-          .snapshots()
-          .listen((snapshot) {
-        double total = 0;
-        for (var doc in snapshot.docs) {
-          total += (doc.data()['totalBudget'] ?? 0).toDouble();
-        }
-        if (mounted) {
-          setState(() {
-            _totalPlannedBudget = total;
-          });
-        }
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,23 +142,6 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-                  if (_totalPlannedBudget > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _coral.withAlpha(isDarkMode ? 40 : 20),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _coral.withAlpha(50)),
-                      ),
-                      child: Text(
-                        '${_totalPlannedBudget.toStringAsFixed(0)} ₺',
-                        style: const TextStyle(
-                          color: _coral,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -344,7 +304,7 @@ class _HomePageState extends State<HomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => TripDetailsPage(tripData: data),
+                          builder: (_) => TripDetailsPage(tripData: data, tripId: docs[index].id),
                         ),
                       );
                     },

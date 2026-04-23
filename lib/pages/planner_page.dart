@@ -4,9 +4,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
+import '../services/currency_service.dart';
 
 class PlannerPage extends StatefulWidget {
-  const PlannerPage({super.key});
+  final Map<String, dynamic>? existingTrip;
+  final String? tripId;
+
+  const PlannerPage({super.key, this.existingTrip, this.tripId});
 
   @override
   State<PlannerPage> createState() => _PlannerPageState();
@@ -29,12 +33,92 @@ class _PlannerPageState extends State<PlannerPage> {
   PlatformFile? _pickedPlaceFile;
   bool _isUploading = false;
 
+  DateTime? _startDate;
+  DateTime? _endDate;
+  String _hotelCurrency = 'TRY';
+  String _placeCurrency = 'TRY';
+  String _budgetLimitCurrency = 'TRY';
+  final _budgetLimitController = TextEditingController();
+  final _currencyService = CurrencyService();
+  Map<String, double>? _rates;
+
+  // Budget categories
+  final _flightController = TextEditingController();
+  String _flightCurrency = 'TRY';
+  final _foodController = TextEditingController();
+  String _foodCurrency = 'TRY';
+  final _transportController = TextEditingController();
+  String _transportCurrency = 'TRY';
+  final _otherController = TextEditingController();
+  String _otherCurrency = 'TRY';
+
   static const _coral = Color(0xFFFF6B6B);
+
+  bool get _isEditing => widget.existingTrip != null;
 
   double get _totalBudget {
     double hotelPrice = double.tryParse(_hotelPriceController.text) ?? 0;
-    double placesPrice = _places.fold(0, (sum, item) => sum + (item['price'] as double));
+    double placesPrice = _places.fold(0.0, (sum, item) => sum + ((item['price'] as num?)?.toDouble() ?? 0));
     return hotelPrice + placesPrice;
+  }
+
+  double get _totalBudgetTRY {
+    if (_rates == null) return _totalBudget;
+    double hotel = _currencyService.convertToTRY(
+      double.tryParse(_hotelPriceController.text) ?? 0, _hotelCurrency, _rates!);
+    double places = _places.fold(0.0, (sum, p) =>
+      sum + _currencyService.convertToTRY((p['price'] as num?)?.toDouble() ?? 0, p['currency'] ?? 'TRY', _rates!));
+    double flight = _currencyService.convertToTRY(double.tryParse(_flightController.text) ?? 0, _flightCurrency, _rates!);
+    double food = _currencyService.convertToTRY(double.tryParse(_foodController.text) ?? 0, _foodCurrency, _rates!);
+    double transport = _currencyService.convertToTRY(double.tryParse(_transportController.text) ?? 0, _transportCurrency, _rates!);
+    double other = _currencyService.convertToTRY(double.tryParse(_otherController.text) ?? 0, _otherCurrency, _rates!);
+    return hotel + places + flight + food + transport + other;
+  }
+
+  double get _budgetLimitTRY {
+    final raw = double.tryParse(_budgetLimitController.text) ?? 0;
+    if (_rates == null) return raw;
+    return _currencyService.convertToTRY(raw, _budgetLimitCurrency, _rates!);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _currencyService.getRatesToTRY().then((r) { if (mounted) setState(() => _rates = r); });
+    if (_isEditing) _loadExistingData();
+  }
+
+  void _loadExistingData() {
+    final d = widget.existingTrip!;
+    _cityController.text = d['city'] ?? '';
+    _countryController.text = d['country'] ?? '';
+    _hotelNameController.text = d['hotelName'] ?? '';
+    _hotelPriceController.text = (d['hotelPrice'] ?? 0).toString();
+    _hotelCurrency = d['hotelCurrency'] ?? 'TRY';
+    if (d['startDate'] != null) _startDate = (d['startDate'] as Timestamp).toDate();
+    if (d['endDate'] != null) _endDate = (d['endDate'] as Timestamp).toDate();
+    if (d['budgetLimit'] != null) _budgetLimitController.text = d['budgetLimit'].toString();
+    _budgetLimitCurrency = d['budgetLimitCurrency'] ?? 'TRY';
+    final cats = d['budgetCategories'] as Map<String, dynamic>?;
+    if (cats != null) {
+      if (cats['Flight'] != null) { _flightController.text = (cats['Flight']['amount'] ?? 0).toString(); _flightCurrency = cats['Flight']['currency'] ?? 'TRY'; }
+      if (cats['Food'] != null) { _foodController.text = (cats['Food']['amount'] ?? 0).toString(); _foodCurrency = cats['Food']['currency'] ?? 'TRY'; }
+      if (cats['Transport'] != null) { _transportController.text = (cats['Transport']['amount'] ?? 0).toString(); _transportCurrency = cats['Transport']['currency'] ?? 'TRY'; }
+      if (cats['Other'] != null) { _otherController.text = (cats['Other']['amount'] ?? 0).toString(); _otherCurrency = cats['Other']['currency'] ?? 'TRY'; }
+    }
+    for (var p in (d['places'] ?? [])) {
+      _places.add({'name': p['name'], 'price': (p['price'] as num?)?.toDouble() ?? 0, 'currency': p['currency'] ?? 'TRY', 'documentUrl': p['documentUrl'], 'documentName': p['documentName']});
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Select';
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Future<void> _pickDate(bool isStart) async {
+    final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now().subtract(const Duration(days: 30)), lastDate: DateTime.now().add(const Duration(days: 730)));
+    if (picked != null) setState(() { if (isStart) { _startDate = picked; } else { _endDate = picked; } });
   }
 
   Future<void> _pickHotelFile() async {
@@ -80,7 +164,8 @@ class _PlannerPageState extends State<PlannerPage> {
         _places.add({
           'name': _placeNameController.text,
           'price': double.tryParse(_placePriceController.text) ?? 0.0,
-          'tempFile': _pickedPlaceFile, // Temporarily store the file object
+          'currency': _placeCurrency,
+          'tempFile': _pickedPlaceFile,
         });
         _placeNameController.clear();
         _placePriceController.clear();
@@ -100,7 +185,7 @@ class _PlannerPageState extends State<PlannerPage> {
         // Upload Hotel Doc
         String? hotelFileUrl;
         if (_pickedHotelFile != null) {
-          hotelFileUrl = await _uploadFile(_pickedHotelHotelFile!, user.uid, 'hotel_documents');
+          hotelFileUrl = await _uploadFile(_pickedHotelFile!, user.uid, 'hotel_documents');
         }
 
         // Upload Place Docs
@@ -117,26 +202,44 @@ class _PlannerPageState extends State<PlannerPage> {
           finalPlaces.add({
             'name': place['name'],
             'price': place['price'],
+            'currency': place['currency'] ?? 'TRY',
             'documentUrl': placeFileUrl,
             'documentName': fileName,
           });
         }
 
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('trips')
-            .add({
+        final tripData = {
           'city': _cityController.text,
           'country': _countryController.text,
           'hotelName': _hotelNameController.text,
           'hotelPrice': double.tryParse(_hotelPriceController.text) ?? 0,
+          'hotelCurrency': _hotelCurrency,
           'hotelDocumentUrl': hotelFileUrl,
           'hotelDocumentName': _pickedHotelFile?.name,
           'places': finalPlaces,
           'totalBudget': _totalBudget,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+          'totalBudgetTRY': _totalBudgetTRY,
+          'budgetLimit': double.tryParse(_budgetLimitController.text),
+          'budgetLimitCurrency': _budgetLimitCurrency,
+          'budgetCategories': {
+            'Flight': {'amount': double.tryParse(_flightController.text) ?? 0, 'currency': _flightCurrency},
+            'Food': {'amount': double.tryParse(_foodController.text) ?? 0, 'currency': _foodCurrency},
+            'Transport': {'amount': double.tryParse(_transportController.text) ?? 0, 'currency': _transportCurrency},
+            'Other': {'amount': double.tryParse(_otherController.text) ?? 0, 'currency': _otherCurrency},
+          },
+          'startDate': _startDate != null ? Timestamp.fromDate(_startDate!) : null,
+          'endDate': _endDate != null ? Timestamp.fromDate(_endDate!) : null,
+        };
+
+        final tripsRef = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('trips');
+
+        if (_isEditing && widget.tripId != null) {
+          tripData['updatedAt'] = FieldValue.serverTimestamp();
+          await tripsRef.doc(widget.tripId).update(tripData);
+        } else {
+          tripData['createdAt'] = FieldValue.serverTimestamp();
+          await tripsRef.add(tripData);
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -176,7 +279,7 @@ class _PlannerPageState extends State<PlannerPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${_totalBudget.toStringAsFixed(0)} units',
+                  '${_totalBudgetTRY.toStringAsFixed(0)} ₺',
                   style: const TextStyle(color: _coral, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -207,12 +310,28 @@ class _PlannerPageState extends State<PlannerPage> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
+
+                  // Travel Dates
+                  _buildSectionTitle('Travel Dates', textColor),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: _dateChip('Start', _startDate, true, cardColor, textColor)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _dateChip('End', _endDate, false, cardColor, textColor)),
+                  ]),
+                  if (_startDate != null && _endDate != null)
+                    Padding(padding: const EdgeInsets.only(top: 6), child: Text('${_endDate!.difference(_startDate!).inDays} days', style: TextStyle(fontSize: 13, color: _coral, fontWeight: FontWeight.w600))),
+                  const SizedBox(height: 24),
+
                   _buildSectionTitle('Accommodation', textColor),
                   const SizedBox(height: 12),
                   _buildTextField(_hotelNameController, 'Hotel Name', Icons.hotel),
                   const SizedBox(height: 12),
-                  _buildTextField(_hotelPriceController, 'Hotel Price (unit)', Icons.payments, isNumber: true),
+                  Row(children: [
+                    Expanded(child: _buildTextField(_hotelPriceController, 'Hotel Price', Icons.payments, isNumber: true)),
+                    const SizedBox(width: 8),
+                    _currencyDropdown(_hotelCurrency, (v) => setState(() => _hotelCurrency = v)),
+                  ]),
                   const SizedBox(height: 12),
                   
                   // Hotel Document Upload
@@ -258,6 +377,8 @@ class _PlannerPageState extends State<PlannerPage> {
                             Expanded(child: _buildTextField(_placeNameController, 'Place Name', Icons.place)),
                             const SizedBox(width: 8),
                             Expanded(child: _buildTextField(_placePriceController, 'Price', Icons.attach_money, isNumber: true)),
+                            const SizedBox(width: 8),
+                            _currencyDropdown(_placeCurrency, (v) => setState(() => _placeCurrency = v)),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -306,7 +427,7 @@ class _PlannerPageState extends State<PlannerPage> {
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text('${place['price']} units', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+                                    Text('${CurrencyService.symbol(place['currency'] ?? 'TRY')}${(place['price'] as num).toStringAsFixed(0)}', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
                                     IconButton(
                                       icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
                                       onPressed: () => setState(() => _places.removeAt(index)),
@@ -320,6 +441,37 @@ class _PlannerPageState extends State<PlannerPage> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // Budget Limit
+                  _buildSectionTitle('Budget Limit', textColor),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: _buildTextField(_budgetLimitController, 'Max Budget', Icons.account_balance_wallet, isNumber: true)),
+                    const SizedBox(width: 8),
+                    _currencyDropdown(_budgetLimitCurrency, (v) => setState(() => _budgetLimitCurrency = v)),
+                  ]),
+                  const SizedBox(height: 16),
+                  _budgetCatRow('Flight', Icons.flight_rounded, _flightController, _flightCurrency, (v) => setState(() => _flightCurrency = v), textColor),
+                  _budgetCatRow('Food', Icons.restaurant_rounded, _foodController, _foodCurrency, (v) => setState(() => _foodCurrency = v), textColor),
+                  _budgetCatRow('Transport', Icons.directions_bus_rounded, _transportController, _transportCurrency, (v) => setState(() => _transportCurrency = v), textColor),
+                  _budgetCatRow('Other', Icons.more_horiz_rounded, _otherController, _otherCurrency, (v) => setState(() => _otherCurrency = v), textColor),
+
+                  if (_budgetLimitTRY > 0) ...[
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: (_totalBudgetTRY / _budgetLimitTRY).clamp(0.0, 1.0),
+                        minHeight: 8,
+                        backgroundColor: Colors.grey[300],
+                        color: _totalBudgetTRY / _budgetLimitTRY > 0.9 ? Colors.red : _coral,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text('${_totalBudgetTRY.toStringAsFixed(0)} / ${_budgetLimitTRY.toStringAsFixed(0)} ₺', style: TextStyle(fontSize: 12, color: textColor)),
+                  ],
+
                   const SizedBox(height: 40),
                   SizedBox(
                     width: double.infinity,
@@ -363,13 +515,61 @@ class _PlannerPageState extends State<PlannerPage> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-      validator: (value) {
-        if (label == 'Hotel Name' || label == 'Hotel Price (unit)') return null; // Make hotel optional if you want
-        return value == null || value.isEmpty ? 'Required' : null;
-      },
     );
   }
 
-  // Fixing the variable name error in _savePlan
-  PlatformFile? get _pickedHotelHotelFile => _pickedHotelFile;
+  Widget _budgetCatRow(String label, IconData icon, TextEditingController controller, String currency, ValueChanged<String> onCurrencyChanged, Color textColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(children: [
+        Icon(icon, size: 18, color: _coral),
+        const SizedBox(width: 6),
+        SizedBox(width: 80, child: Text(label, style: TextStyle(fontSize: 13, color: textColor))),
+        const SizedBox(width: 8),
+        Expanded(child: TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: '0',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            isDense: true,
+          ),
+        )),
+        const SizedBox(width: 6),
+        _currencyDropdown(currency, onCurrencyChanged),
+      ]),
+    );
+  }
+
+  Widget _dateChip(String label, DateTime? date, bool isStart, Color cardColor, Color textColor) {
+    return GestureDetector(
+      onTap: () => _pickDate(isStart),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: _coral.withAlpha(60))),
+        child: Row(children: [
+          const Icon(Icons.calendar_today, size: 16, color: _coral),
+          const SizedBox(width: 8),
+          Text('$label: ${_formatDate(date)}', style: TextStyle(fontSize: 13, color: textColor)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _currencyDropdown(String value, ValueChanged<String> onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(border: Border.all(color: _coral.withAlpha(60)), borderRadius: BorderRadius.circular(12)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isDense: true,
+          items: CurrencyService.supportedCurrencies.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
+          onChanged: (v) { if (v != null) onChanged(v); },
+        ),
+      ),
+    );
+  }
 }
