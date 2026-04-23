@@ -74,8 +74,13 @@ out center 150;
     try {
       final response = await http.post(
         Uri.parse('https://overpass-api.de/api/interpreter'),
-        body: {'data': query},
-      );
+        headers: {
+          'User-Agent': 'WanderApp/1.0',
+          'Accept': '*/*',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'data=${Uri.encodeComponent(query)}',
+      ).timeout(const Duration(seconds: 45));
 
       if (response.statusCode != 200) return [];
 

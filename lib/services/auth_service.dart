@@ -62,39 +62,52 @@ class AuthService {
 
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) return null; // User cancelled
-
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
-
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    final userCredential = await _auth.signInWithCredential(credential);
-
-    // Save/update user data in Firestore
-    if (userCredential.user != null) {
-      final userDoc = _firestore
-          .collection('users')
-          .doc(userCredential.user!.uid);
-
-      final docSnapshot = await userDoc.get();
-      if (!docSnapshot.exists) {
-        await userDoc.set({
-          'uid': userCredential.user!.uid,
-          'email': userCredential.user!.email ?? '',
-          'fullName': userCredential.user!.displayName ?? '',
-          'username': '',
-          'createdAt': FieldValue.serverTimestamp(),
-          'photoUrl': userCredential.user!.photoURL ?? '',
-        });
+    try {
+      debugPrint('DEBUG: Google Sign-In starting...');
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        debugPrint('DEBUG: Google Sign-In cancelled.');
+        return null;
       }
-    }
 
-    return userCredential;
+      debugPrint('DEBUG: Google user retrieved: ${googleUser.email}');
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      debugPrint('DEBUG: accessToken: ${googleAuth.accessToken != null}, idToken: ${googleAuth.idToken != null}');
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      debugPrint('DEBUG: Firebase signed in: ${userCredential.user?.uid}');
+
+      // Save/update user data in Firestore
+      if (userCredential.user != null) {
+        final userDoc = _firestore
+            .collection('users')
+            .doc(userCredential.user!.uid);
+
+        final docSnapshot = await userDoc.get();
+        if (!docSnapshot.exists) {
+          await userDoc.set({
+            'uid': userCredential.user!.uid,
+            'email': userCredential.user!.email ?? '',
+            'fullName': userCredential.user!.displayName ?? '',
+            'username': '',
+            'createdAt': FieldValue.serverTimestamp(),
+            'photoUrl': userCredential.user!.photoURL ?? '',
+          });
+        }
+      }
+
+      return userCredential;
+    } catch (e) {
+      debugPrint('DEBUG: Google Sign-In Error: $e');
+      rethrow;
+    }
   }
 
   /// Get user profile data from Firestore

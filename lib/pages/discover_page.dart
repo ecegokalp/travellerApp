@@ -35,7 +35,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
   final List<Map<String, String>> allDestinations = [
     {'title': 'Paris, France', 'subtitle': 'The city of love', 'image': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=500', 'rating': '4.8', 'price': '\$120', 'category': 'Cities'},
-    {'title': 'Petra, Jordan', 'subtitle': 'Ancient Rose City', 'image': 'https://images.unsplash.com/photo-1579606091094-119c43d2ec75?q=80&w=500', 'rating': '4.9', 'price': '\$85', 'category': 'History'},
+    {'title': 'Petra, Jordan', 'subtitle': 'Ancient Rose City', 'image': 'https://images.unsplash.com/photo-1563177978-4f12b6b09c3f?q=80&w=500', 'rating': '4.9', 'price': '\$85', 'category': 'History'},
     {'title': 'Maldives', 'subtitle': 'Crystal clear waters', 'image': 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=500', 'rating': '4.9', 'price': '\$250', 'category': 'Beaches'},
     {'title': 'Sahara Desert', 'subtitle': 'Golden dunes', 'image': 'https://images.unsplash.com/photo-1547235001-d703406d3f17?q=80&w=500', 'rating': '4.6', 'price': '\$110', 'category': 'Desert'},
     {'title': 'Swiss Alps', 'subtitle': 'Snowy peaks', 'image': 'https://images.unsplash.com/photo-1531310197839-ccf54634509e?q=80&w=500', 'rating': '4.7', 'price': '\$180', 'category': 'Mountains'},

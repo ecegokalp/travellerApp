@@ -122,10 +122,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isGoogleLoading = true);
     try {
-      await _authService.signInWithGoogle();
-    } catch (_) {
+      final result = await _authService.signInWithGoogle();
+      if (result == null && mounted) {
+        _showSnackBar('Google sign-in was cancelled.', isError: true);
+      }
+    } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      _showSnackBar('Google sign-in failed. Please try again.', isError: true);
+      debugPrint('Google Sign-In FirebaseAuth Error: ${e.code} - ${e.message}');
+      _showSnackBar('Google sign-in failed: ${e.message}', isError: true);
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('Google Sign-In Error: $e');
+      _showSnackBar('Google sign-in failed: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
