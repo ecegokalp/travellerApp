@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../services/auth_service.dart';
 import 'settings_page.dart';
 import 'planner_page.dart';
@@ -15,6 +16,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   String _displayName = '';
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
 
   static const _coral = Color(0xFFFF6B6B);
   static const _warmGray = Color(0xFF6B7280);
@@ -248,6 +251,10 @@ class _HomePageState extends State<HomePage> {
 
                     // My Trips Section (From trips collection)
                     _buildMyTripsSection(context, textColor, secondaryTextColor),
+                    const SizedBox(height: 28),
+
+                    // Travel Calendar Section
+                    _buildCalendarSection(cardColor, textColor, secondaryTextColor),
 
                     // Bottom padding for floating navbar
                     const SizedBox(height: 100),
@@ -298,7 +305,7 @@ class _HomePageState extends State<HomePage> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _warmGray.withOpacity(0.1)),
+                    border: Border.all(color: _warmGray.withValues(alpha: 0.1)),
                   ),
                   child: Center(
                     child: Text(
@@ -344,7 +351,7 @@ class _HomePageState extends State<HomePage> {
                           Positioned(
                             right: -10,
                             top: -10,
-                            child: Icon(Icons.flight_takeoff, color: Colors.white.withOpacity(0.2), size: 60),
+                            child: Icon(Icons.flight_takeoff, color: Colors.white.withValues(alpha: 0.2), size: 60),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(16),
@@ -366,7 +373,7 @@ class _HomePageState extends State<HomePage> {
                                 Text(
                                   'See Details',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withValues(alpha: 0.8),
                                     fontSize: 11,
                                   ),
                                 ),
@@ -386,4 +393,83 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildCalendarSection(Color cardColor, Color textColor, Color secondaryTextColor) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.calendar_month_rounded, color: _coral, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Travel Calendar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TableCalendar(
+            firstDay: DateTime.utc(2020, 1, 1),
+            lastDay: DateTime.utc(2030, 12, 31),
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+            },
+            calendarStyle: CalendarStyle(
+              todayDecoration: BoxDecoration(
+                color: _coral.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              selectedDecoration: const BoxDecoration(
+                color: _coral,
+                shape: BoxShape.circle,
+              ),
+              markerDecoration: const BoxDecoration(
+                color: _coral,
+                shape: BoxShape.circle,
+              ),
+              defaultTextStyle: TextStyle(color: textColor),
+              weekendTextStyle: TextStyle(color: textColor.withValues(alpha: 0.6)),
+            ),
+            headerStyle: HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: true,
+              titleTextStyle: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              leftChevronIcon: const Icon(Icons.chevron_left, color: _coral),
+              rightChevronIcon: const Icon(Icons.chevron_right, color: _coral),
+            ),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w600),
+              weekendStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.6), fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
