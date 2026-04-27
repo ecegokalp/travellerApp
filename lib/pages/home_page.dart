@@ -18,6 +18,7 @@ class _HomePageState extends State<HomePage> {
   String _displayName = '';
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  Map<DateTime, List<dynamic>> _events = {};
 
   static const _coral = Color(0xFFFF6B6B);
   static const _warmGray = Color(0xFF6B7280);
@@ -394,82 +395,125 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCalendarSection(Color cardColor, Color textColor, Color secondaryTextColor) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    final user = _authService.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('trips')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          _events = {};
+          for (var doc in snapshot.data!.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final startDate = (data['startDate'] as Timestamp?)?.toDate();
+            final endDate = (data['endDate'] as Timestamp?)?.toDate();
+            final city = data['city'] ?? 'Trip';
+
+            if (startDate != null && endDate != null) {
+              // Mark all days between start and end
+              DateTime current = DateTime(startDate.year, startDate.month, startDate.day);
+              DateTime last = DateTime(endDate.year, endDate.month, endDate.day);
+              
+              while (current.isBefore(last) || current.isAtSameMomentAs(last)) {
+                final dayKey = DateTime(current.year, current.month, current.day);
+                if (_events[dayKey] == null) _events[dayKey] = [];
+                _events[dayKey]!.add(city);
+                current = current.add(const Duration(days: 1));
+              }
+            } else if (startDate != null) {
+              final dayKey = DateTime(startDate.year, startDate.month, startDate.day);
+              if (_events[dayKey] == null) _events[dayKey] = [];
+              _events[dayKey]!.add(city);
+            }
+          }
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.calendar_month_rounded, color: _coral, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Travel Calendar',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
+              Row(
+                children: [
+                  const Icon(Icons.calendar_month_rounded, color: _coral, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Travel Calendar',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TableCalendar(
+                firstDay: DateTime.utc(2020, 1, 1),
+                lastDay: DateTime.utc(2030, 12, 31),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                eventLoader: (day) {
+                  return _events[DateTime(day.year, day.month, day.day)] ?? [];
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                  });
+                },
+                calendarStyle: CalendarStyle(
+                  todayDecoration: BoxDecoration(
+                    color: _coral.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: const BoxDecoration(
+                    color: _coral,
+                    shape: BoxShape.circle,
+                  ),
+                  markerDecoration: const BoxDecoration(
+                    color: _coral,
+                    shape: BoxShape.circle,
+                  ),
+                  markersMaxCount: 1,
+                  defaultTextStyle: TextStyle(color: textColor),
+                  weekendTextStyle: TextStyle(color: textColor.withValues(alpha: 0.6)),
+                ),
+                headerStyle: HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                  titleTextStyle: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  leftChevronIcon: const Icon(Icons.chevron_left, color: _coral),
+                  rightChevronIcon: const Icon(Icons.chevron_right, color: _coral),
+                ),
+                daysOfWeekStyle: DaysOfWeekStyle(
+                  weekdayStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w600),
+                  weekendStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.6), fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          TableCalendar(
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
-            },
-            calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(
-                color: _coral.withValues(alpha: 0.3),
-                shape: BoxShape.circle,
-              ),
-              selectedDecoration: const BoxDecoration(
-                color: _coral,
-                shape: BoxShape.circle,
-              ),
-              markerDecoration: const BoxDecoration(
-                color: _coral,
-                shape: BoxShape.circle,
-              ),
-              defaultTextStyle: TextStyle(color: textColor),
-              weekendTextStyle: TextStyle(color: textColor.withValues(alpha: 0.6)),
-            ),
-            headerStyle: HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-              titleTextStyle: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-              leftChevronIcon: const Icon(Icons.chevron_left, color: _coral),
-              rightChevronIcon: const Icon(Icons.chevron_right, color: _coral),
-            ),
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w600),
-              weekendStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.6), fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
