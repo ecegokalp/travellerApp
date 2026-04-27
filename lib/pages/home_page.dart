@@ -28,11 +28,28 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadUserData() async {
     final user = _authService.currentUser;
-    if (user != null) {
+    if (user == null) return;
+
+    final display = (user.displayName ?? '').trim();
+    final emailPrefix = (user.email ?? '').split('@').first.trim();
+    final fallbackName =
+        display.isNotEmpty
+            ? display
+            : (emailPrefix.isNotEmpty ? emailPrefix : 'Traveller');
+
+    try {
       final profile = await _authService.getUserProfile(user.uid);
+      final fullName = (profile?['fullName'] ?? '').toString().trim();
+
       if (mounted) {
         setState(() {
-          _displayName = profile?['fullName'] ?? user.displayName ?? 'Traveller';
+          _displayName = fullName.isNotEmpty ? fullName : fallbackName;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _displayName = fallbackName;
         });
       }
     }

@@ -19,10 +19,16 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    return await _auth.signInWithEmailAndPassword(
+    final credential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
+
+    if (credential.user != null) {
+      await _ensureUserDoc(credential.user!);
+    }
+
+    return credential;
   }
 
   /// Create account with email & password and save profile to Firestore
@@ -84,23 +90,8 @@ class AuthService {
       final userCredential = await _auth.signInWithCredential(credential);
       debugPrint('DEBUG: Firebase signed in: ${userCredential.user?.uid}');
 
-      // Save/update user data in Firestore
       if (userCredential.user != null) {
-        final userDoc = _firestore
-            .collection('users')
-            .doc(userCredential.user!.uid);
-
-        final docSnapshot = await userDoc.get();
-        if (!docSnapshot.exists) {
-          await userDoc.set({
-            'uid': userCredential.user!.uid,
-            'email': userCredential.user!.email ?? '',
-            'fullName': userCredential.user!.displayName ?? '',
-            'username': '',
-            'createdAt': FieldValue.serverTimestamp(),
-            'photoUrl': userCredential.user!.photoURL ?? '',
-          });
-        }
+        await _ensureUserDoc(userCredential.user!);
       }
 
       return userCredential;
@@ -114,6 +105,36 @@ class AuthService {
   Future<Map<String, dynamic>?> getUserProfile(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     return doc.data();
+  }
+
+  Future<void> _ensureUserDoc(User user) async {
+    final ref = _firestore.collection('users').doc(user.uid);
+    final snap = await ref.get();
+
+    final baseData = <String, dynamic>{
+      'uid': user.uid,
+      'email': user.email ?? '',
+      'photoUrl': user.photoURL ?? '',
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (!snap.exists) {
+      await ref.set({
+        ...baseData,
+        'fullName': user.displayName ?? '',
+        'username': '',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    await ref.set(baseData, SetOptions(merge: true));
+
+    final currentFullName = (snap.data()?['fullName'] ?? '').toString().trim();
+    final authDisplayName = (user.displayName ?? '').trim();
+    if (currentFullName.isEmpty && authDisplayName.isNotEmpty) {
+      await ref.set({'fullName': authDisplayName}, SetOptions(merge: true));
+    }
   }
 
   /// Send password reset email
