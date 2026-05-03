@@ -1,5 +1,5 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'home_page.dart';
 import 'discover_page.dart';
 import 'map_explore_page.dart';
@@ -28,86 +28,74 @@ class _MainScreenState extends State<MainScreen> {
 
   static const _sunset = Color(0xFFFF6B6B);
 
+  static const _icons = <List<IconData>>[
+    [Icons.home_rounded, Icons.home_outlined],
+    [Icons.explore_rounded, Icons.explore_outlined],
+    [Icons.map_rounded, Icons.map_outlined],
+    [Icons.bookmark_rounded, Icons.bookmark_border_rounded],
+    [Icons.folder_rounded, Icons.folder_open_rounded],
+    [Icons.person_rounded, Icons.person_outline_rounded],
+  ];
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF1A1D26) : Colors.white;
-    final inactiveColor = isDark ? Colors.white38 : const Color(0xFFB0B5C0);
+    final inactiveColor = isDark ? Colors.white38 : const Color(0xFF9CA3AF);
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       extendBody: true,
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(isDark ? 60 : 20),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, 'Home', inactiveColor),
-              _buildNavItem(1, Icons.explore_rounded, Icons.explore_outlined, 'Discover', inactiveColor),
-              _buildNavItem(2, Icons.map_rounded, Icons.map_outlined, 'Map', inactiveColor),
-              _buildNavItem(3, Icons.bookmark_rounded, Icons.bookmark_border_rounded, 'Saved', inactiveColor),
-              _buildNavItem(4, Icons.folder_rounded, Icons.folder_open_rounded, 'Files', inactiveColor),
-              _buildNavItem(5, Icons.person_rounded, Icons.person_outline_rounded, 'Profile', inactiveColor),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label, Color inactiveColor) {
-    final isActive = _currentIndex == index;
-
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 12 : 8,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: isActive ? _sunset.withAlpha(20) : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isActive ? activeIcon : inactiveIcon,
-              color: isActive ? _sunset : inactiveColor,
-              size: 22,
-            ),
-            if (isActive) ...[
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  color: _sunset,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+      bottomNavigationBar: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            padding: const EdgeInsets.only(top: 12, bottom: 24),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1A1D26).withAlpha(140)
+                  : Colors.white.withAlpha(140),
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white.withAlpha(10) : Colors.black.withAlpha(8),
                 ),
               ),
-            ],
-          ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(_icons.length, (i) {
+                final isActive = _currentIndex == i;
+                return GestureDetector(
+                  onTap: () => setState(() => _currentIndex = i),
+                  behavior: HitTestBehavior.opaque,
+                  child: SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: Center(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        width: isActive ? 50 : 42,
+                        height: isActive ? 50 : 42,
+                        decoration: BoxDecoration(
+                          color: isActive ? _sunset : Colors.transparent,
+                          shape: BoxShape.circle,
+                          boxShadow: isActive
+                              ? [BoxShadow(color: _sunset.withAlpha(60), blurRadius: 12, offset: const Offset(0, 4))]
+                              : null,
+                        ),
+                        child: Icon(
+                          isActive ? _icons[i][0] : _icons[i][1],
+                          color: isActive ? Colors.white : inactiveColor,
+                          size: isActive ? 24 : 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../services/auth_service.dart';
 import 'settings_page.dart';
@@ -20,7 +21,8 @@ class _HomePageState extends State<HomePage> {
   DateTime? _selectedDay;
   Map<DateTime, List<dynamic>> _events = {};
 
-  static const _coral = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFFFF6B6B);
+  static const _accentLight = Color(0xFFFF8E53);
   static const _warmGray = Color(0xFF6B7280);
   static const _darkText = Color(0xFF1F2937);
 
@@ -59,14 +61,13 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
     final cardColor = Theme.of(context).cardColor;
-    final textColor = isDarkMode ? Colors.white : _darkText;
-    final secondaryTextColor = isDarkMode ? Colors.white70 : _warmGray;
+    final textColor = isDark ? Colors.white : _darkText;
+    final secondaryTextColor = isDark ? Colors.white70 : _warmGray;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -80,18 +81,13 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   // Avatar with PopupMenu
                   Theme(
-                    data: Theme.of(context).copyWith(
-                      cardColor: cardColor,
-                    ),
+                    data: Theme.of(context).copyWith(cardColor: cardColor),
                     child: PopupMenuButton<String>(
                       offset: const Offset(0, 56),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       onSelected: (value) async {
                         if (value == 'settings') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SettingsPage()),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
                         } else if (value == 'logout') {
                           await _authService.signOut();
                         }
@@ -99,40 +95,31 @@ class _HomePageState extends State<HomePage> {
                       itemBuilder: (context) => [
                         PopupMenuItem(
                           value: 'settings',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.settings_outlined, size: 20, color: _coral),
-                              const SizedBox(width: 12),
-                              Text('Settings', style: TextStyle(color: textColor)),
-                            ],
-                          ),
+                          child: Row(children: [
+                            const Icon(Icons.settings_outlined, size: 20, color: _accent),
+                            const SizedBox(width: 12),
+                            Text('Settings', style: GoogleFonts.inter(color: textColor)),
+                          ]),
                         ),
                         PopupMenuItem(
                           value: 'logout',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.logout_rounded, size: 20, color: Colors.redAccent),
-                              const SizedBox(width: 12),
-                              const Text('Sign Out', style: TextStyle(color: Colors.redAccent)),
-                            ],
-                          ),
+                          child: Row(children: [
+                            const Icon(Icons.logout_rounded, size: 20, color: Colors.redAccent),
+                            const SizedBox(width: 12),
+                            Text('Sign Out', style: GoogleFonts.inter(color: Colors.redAccent)),
+                          ]),
                         ),
                       ],
                       child: Container(
-                        width: 48,
-                        height: 48,
+                        width: 48, height: 48,
                         decoration: BoxDecoration(
-                          color: _coral.withAlpha(30),
+                          gradient: LinearGradient(colors: [_accent, _accentLight]),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Center(
                           child: Text(
                             _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: _coral,
-                            ),
+                            style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
                           ),
                         ),
                       ),
@@ -143,30 +130,30 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Welcome back,',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: secondaryTextColor,
-                          ),
-                        ),
+                        Text('Welcome back,', style: GoogleFonts.inter(fontSize: 13, color: secondaryTextColor)),
                         const SizedBox(height: 2),
                         Text(
                           _displayName.isNotEmpty ? _displayName : 'Traveller',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: textColor,
-                          ),
+                          style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: textColor),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
+                  // Notification bell
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withAlpha(10) : Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
+                    ),
+                    child: Icon(Icons.notifications_none_rounded, size: 22, color: isDark ? Colors.white70 : _darkText),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 36),
+            const SizedBox(height: 28),
 
             // Main Content
             Expanded(
@@ -175,13 +162,10 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Hero Card (Ready to Explore)
+                    // Hero Card
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PlannerPage()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PlannerPage()));
                       },
                       child: Container(
                         width: double.infinity,
@@ -190,18 +174,11 @@ class _HomePageState extends State<HomePage> {
                           gradient: const LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFFFF6B6B),
-                              Color(0xFFFF8E8E),
-                            ],
+                            colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53), Color(0xFFFFAA85)],
                           ),
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
-                            BoxShadow(
-                              color: _coral.withAlpha(50),
-                              blurRadius: 24,
-                              offset: const Offset(0, 12),
-                            ),
+                            BoxShadow(color: _accent.withAlpha(60), blurRadius: 24, offset: const Offset(0, 12)),
                           ],
                         ),
                         child: Column(
@@ -213,36 +190,31 @@ class _HomePageState extends State<HomePage> {
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withAlpha(50),
+                                    color: Colors.white.withAlpha(40),
                                     borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: Colors.white.withAlpha(30)),
                                   ),
-                                  child: const Icon(
-                                    Icons.flight_takeoff_rounded,
-                                    size: 28,
-                                    color: Colors.white,
-                                  ),
+                                  child: const Icon(Icons.flight_takeoff_rounded, size: 28, color: Colors.white),
                                 ),
-                                const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withAlpha(30),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 20),
-                            const Text(
-                              'Ready to Explore?',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
                             Text(
-                              'Tap here to plan your next adventure.\nSave hotels, places and track your budget.',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white.withAlpha(210),
-                                height: 1.5,
-                              ),
+                              'Ready to\nExplore?',
+                              style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Plan your next adventure.\nSave hotels, places and track your budget.',
+                              style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withAlpha(210), height: 1.5),
                             ),
                           ],
                         ),
@@ -250,14 +222,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 28),
 
-                    // My Trips Section (From trips collection)
-                    _buildMyTripsSection(context, textColor, secondaryTextColor),
+                    // My Trips Section
+                    _buildMyTripsSection(context, textColor, secondaryTextColor, isDark, cardColor),
                     const SizedBox(height: 28),
 
                     // Travel Calendar Section
-                    _buildCalendarSection(cardColor, textColor, secondaryTextColor),
+                    _buildCalendarSection(cardColor, textColor, secondaryTextColor, isDark),
 
-                    // Bottom padding for floating navbar
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -269,24 +240,23 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildMyTripsSection(BuildContext context, Color textColor, Color secondaryTextColor) {
+  Widget _buildMyTripsSection(BuildContext context, Color textColor, Color secondaryTextColor, bool isDark, Color cardColor) {
     final user = _authService.currentUser;
     if (user == null) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'My Trips',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('My Trips', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: textColor)),
+            Text('View All', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: _accent)),
+          ],
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 100,
+          height: 110,
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('users')
@@ -304,15 +274,12 @@ class _HomePageState extends State<HomePage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
+                    color: cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _warmGray.withValues(alpha: 0.1)),
+                    border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
                   ),
                   child: Center(
-                    child: Text(
-                      'No planned trips yet. Start exploring!',
-                      style: TextStyle(color: secondaryTextColor, fontSize: 13),
-                    ),
+                    child: Text('No planned trips yet. Start exploring!', style: GoogleFonts.inter(color: secondaryTextColor, fontSize: 13)),
                   ),
                 );
               }
@@ -323,36 +290,31 @@ class _HomePageState extends State<HomePage> {
                 itemBuilder: (context, index) {
                   final data = docs[index].data() as Map<String, dynamic>;
                   final city = data['city'] ?? 'Unknown';
+                  final country = data['country'] ?? '';
 
                   return GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TripDetailsPage(tripData: data, tripId: docs[index].id),
-                        ),
-                      );
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => TripDetailsPage(tripData: data, tripId: docs[index].id),
+                      ));
                     },
                     child: Container(
-                      width: 140,
+                      width: 150,
                       margin: const EdgeInsets.only(right: 16),
                       decoration: BoxDecoration(
-                        color: _coral,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                        ),
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _coral.withAlpha(60),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                        boxShadow: [BoxShadow(color: _accent.withAlpha(40), blurRadius: 12, offset: const Offset(0, 6))],
                       ),
                       child: Stack(
                         children: [
                           Positioned(
-                            right: -10,
-                            top: -10,
-                            child: Icon(Icons.flight_takeoff, color: Colors.white.withValues(alpha: 0.2), size: 60),
+                            right: -10, top: -10,
+                            child: Icon(Icons.flight_takeoff, color: Colors.white.withAlpha(30), size: 60),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(16),
@@ -362,21 +324,22 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 Text(
                                   city,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                                  style: GoogleFonts.playfairDisplay(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'See Details',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    fontSize: 11,
+                                if (country.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(country, style: GoogleFonts.inter(color: Colors.white.withAlpha(180), fontSize: 11, fontWeight: FontWeight.w500)),
+                                ],
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withAlpha(35),
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
+                                  child: Text('Details', style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
                                 ),
                               ],
                             ),
@@ -394,7 +357,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildCalendarSection(Color cardColor, Color textColor, Color secondaryTextColor) {
+  Widget _buildCalendarSection(Color cardColor, Color textColor, Color secondaryTextColor, bool isDark) {
     final user = _authService.currentUser;
     if (user == null) return const SizedBox.shrink();
 
@@ -414,10 +377,9 @@ class _HomePageState extends State<HomePage> {
             final city = data['city'] ?? 'Trip';
 
             if (startDate != null && endDate != null) {
-              // Mark all days between start and end
               DateTime current = DateTime(startDate.year, startDate.month, startDate.day);
               DateTime last = DateTime(endDate.year, endDate.month, endDate.day);
-              
+
               while (current.isBefore(last) || current.isAtSameMomentAs(last)) {
                 final dayKey = DateTime(current.year, current.month, current.day);
                 if (_events[dayKey] == null) _events[dayKey] = [];
@@ -437,12 +399,9 @@ class _HomePageState extends State<HomePage> {
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC), width: 0.5),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
+              BoxShadow(color: Colors.black.withAlpha(isDark ? 20 : 8), blurRadius: 20, offset: const Offset(0, 10)),
             ],
           ),
           child: Column(
@@ -450,16 +409,13 @@ class _HomePageState extends State<HomePage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.calendar_month_rounded, color: _coral, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Travel Calendar',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: _accent.withAlpha(20), borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.calendar_month_rounded, color: _accent, size: 18),
                   ),
+                  const SizedBox(width: 10),
+                  Text('Travel Calendar', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -478,36 +434,23 @@ class _HomePageState extends State<HomePage> {
                   });
                 },
                 calendarStyle: CalendarStyle(
-                  todayDecoration: BoxDecoration(
-                    color: _coral.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  selectedDecoration: const BoxDecoration(
-                    color: _coral,
-                    shape: BoxShape.circle,
-                  ),
-                  markerDecoration: const BoxDecoration(
-                    color: _coral,
-                    shape: BoxShape.circle,
-                  ),
+                  todayDecoration: BoxDecoration(color: _accent.withAlpha(60), shape: BoxShape.circle),
+                  selectedDecoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
+                  markerDecoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
                   markersMaxCount: 1,
-                  defaultTextStyle: TextStyle(color: textColor),
-                  weekendTextStyle: TextStyle(color: textColor.withValues(alpha: 0.6)),
+                  defaultTextStyle: GoogleFonts.inter(color: textColor),
+                  weekendTextStyle: GoogleFonts.inter(color: textColor.withAlpha(150)),
                 ),
                 headerStyle: HeaderStyle(
                   formatButtonVisible: false,
                   titleCentered: true,
-                  titleTextStyle: TextStyle(
-                    color: textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                  leftChevronIcon: const Icon(Icons.chevron_left, color: _coral),
-                  rightChevronIcon: const Icon(Icons.chevron_right, color: _coral),
+                  titleTextStyle: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
+                  leftChevronIcon: const Icon(Icons.chevron_left, color: _accent),
+                  rightChevronIcon: const Icon(Icons.chevron_right, color: _accent),
                 ),
                 daysOfWeekStyle: DaysOfWeekStyle(
-                  weekdayStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w600),
-                  weekendStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.6), fontWeight: FontWeight.w600),
+                  weekdayStyle: GoogleFonts.inter(color: secondaryTextColor, fontWeight: FontWeight.w600, fontSize: 12),
+                  weekendStyle: GoogleFonts.inter(color: secondaryTextColor.withAlpha(150), fontWeight: FontWeight.w600, fontSize: 12),
                 ),
               ),
             ],

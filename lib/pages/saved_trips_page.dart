@@ -1,33 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 
 class SavedTripsPage extends StatelessWidget {
   const SavedTripsPage({super.key});
 
-  static const _coral = Color(0xFFFF6B6B);
-  static const _cream = Color(0xFFFFF8F0);
+  static const _accent = Color(0xFFFF6B6B);
   static const _darkText = Color(0xFF1F2937);
   static const _warmGray = Color(0xFF6B7280);
 
   @override
   Widget build(BuildContext context) {
     final authService = AuthService();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = isDark ? Colors.white : _darkText;
 
     return Scaffold(
-      backgroundColor: _cream,
+      backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: _darkText, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Saved Adventures',
-          style: TextStyle(
-            color: _darkText,
+          style: GoogleFonts.inter(
+            color: textColor,
             fontWeight: FontWeight.w800,
             fontSize: 20,
             letterSpacing: -0.5,
@@ -38,7 +43,7 @@ class SavedTripsPage extends StatelessWidget {
         stream: authService.getSavedTrips(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: _coral));
+            return const Center(child: CircularProgressIndicator(color: _accent));
           }
 
           if (snapshot.hasError) {
@@ -52,11 +57,11 @@ class SavedTripsPage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bookmark_border_rounded, size: 64, color: _warmGray.withOpacity(0.5)),
+                  Icon(Icons.bookmark_border_rounded, size: 64, color: _warmGray.withAlpha(120)),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'No saved trips yet',
-                    style: TextStyle(color: _warmGray, fontSize: 16),
+                    style: GoogleFonts.inter(color: _warmGray, fontSize: 16),
                   ),
                 ],
               ),
@@ -76,6 +81,9 @@ class SavedTripsPage extends StatelessWidget {
                   data['subtitle'] ?? '',
                   data['image'] ?? '',
                   data['rating'] ?? '0.0',
+                  isDark,
+                  cardColor,
+                  textColor,
                 ),
               );
             },
@@ -91,14 +99,17 @@ class SavedTripsPage extends StatelessWidget {
     String subtitle,
     String imageUrl,
     String rating,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(8),
+            color: Colors.black.withAlpha(isDark ? 30 : 8),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -111,14 +122,19 @@ class SavedTripsPage extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: Image.network(
-                  imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
+                  placeholder: (_, __) => Container(
                     height: 180,
-                    color: Colors.grey.shade200,
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: _accent)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    height: 180,
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
                     child: const Icon(Icons.image_not_supported_outlined, color: _warmGray),
                   ),
                 ),
@@ -128,11 +144,12 @@ class SavedTripsPage extends StatelessWidget {
                 right: 16,
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: cardColor,
                     shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 8)],
                   ),
-                  child: const Icon(Icons.favorite, color: _coral, size: 20),
+                  child: const Icon(Icons.favorite, color: _accent, size: 20),
                 ),
               ),
               Positioned(
@@ -146,11 +163,11 @@ class SavedTripsPage extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                      const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
                       const SizedBox(width: 4),
                       Text(
                         rating,
-                        style: const TextStyle(
+                        style: GoogleFonts.inter(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
@@ -169,18 +186,18 @@ class SavedTripsPage extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: _darkText,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: GoogleFonts.inter(
                     fontSize: 14,
-                    color: _warmGray,
+                    color: isDark ? Colors.white70 : _warmGray,
                   ),
                 ),
               ],

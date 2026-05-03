@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
               seedColor: const Color(0xFFFF6B6B),
               brightness: Brightness.light,
             ),
-            scaffoldBackgroundColor: const Color(0xFFFFF8F0),
+            scaffoldBackgroundColor: const Color(0xFFF5F0E8),
             cardColor: Colors.white,
             useMaterial3: true,
             textTheme: const TextTheme(

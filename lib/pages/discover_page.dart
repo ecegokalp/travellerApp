@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import 'details_page.dart';
 import 'saved_trips_page.dart';
@@ -12,30 +14,28 @@ class DiscoverPage extends StatefulWidget {
 
 class _DiscoverPageState extends State<DiscoverPage> {
   final AuthService _authService = AuthService();
-  final ScrollController _scrollController = ScrollController();
-  static const _coral = Color(0xFFFF6B6B);
-  static const _cream = Color(0xFFFFF8F0);
+  static const _accent = Color(0xFFFF6B6B);
   static const _darkText = Color(0xFF1F2937);
   static const _warmGray = Color(0xFF6B7280);
 
   int selectedCategory = 0;
 
-  final List<Map<String, String>> categories = [
-    {'name': 'All', 'icon': '🌍'},
-    {'name': 'Cities', 'icon': '🏙️'},
-    {'name': 'History', 'icon': '🏛️'},
-    {'name': 'Beaches', 'icon': '🏖️'},
-    {'name': 'Mountains', 'icon': '🏔️'},
-    {'name': 'Forests', 'icon': '🌲'},
-    {'name': 'Desert', 'icon': '🌵'},
-    {'name': 'Camping', 'icon': '⛺'},
-    {'name': 'Islands', 'icon': '🏝️'},
-    {'name': 'Art', 'icon': '🎨'},
+  final List<Map<String, dynamic>> categories = [
+    {'name': 'All', 'icon': Icons.apps_rounded},
+    {'name': 'Cities', 'icon': Icons.location_city_rounded},
+    {'name': 'History', 'icon': Icons.account_balance_rounded},
+    {'name': 'Beaches', 'icon': Icons.beach_access_rounded},
+    {'name': 'Mountains', 'icon': Icons.terrain_rounded},
+    {'name': 'Forests', 'icon': Icons.forest_rounded},
+    {'name': 'Desert', 'icon': Icons.wb_sunny_rounded},
+    {'name': 'Camping', 'icon': Icons.hiking_rounded},
+    {'name': 'Islands', 'icon': Icons.sailing_rounded},
+    {'name': 'Art', 'icon': Icons.palette_rounded},
   ];
 
   final List<Map<String, String>> allDestinations = [
     {'title': 'Paris, France', 'subtitle': 'The city of love', 'image': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=500', 'rating': '4.8', 'price': '\$120', 'category': 'Cities'},
-    {'title': 'Petra, Jordan', 'subtitle': 'Ancient Rose City', 'image': 'https://images.unsplash.com/photo-1563177978-4f12b6b09c3f?q=80&w=500', 'rating': '4.9', 'price': '\$85', 'category': 'History'},
+    {'title': 'Petra, Jordan', 'subtitle': 'Ancient Rose City', 'image': 'https://images.unsplash.com/photo-1580834341580-8c17a3a630ca?q=80&w=500', 'rating': '4.9', 'price': '\$85', 'category': 'History'},
     {'title': 'Maldives', 'subtitle': 'Crystal clear waters', 'image': 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=500', 'rating': '4.9', 'price': '\$250', 'category': 'Beaches'},
     {'title': 'Sahara Desert', 'subtitle': 'Golden dunes', 'image': 'https://images.unsplash.com/photo-1547235001-d703406d3f17?q=80&w=500', 'rating': '4.6', 'price': '\$110', 'category': 'Desert'},
     {'title': 'Swiss Alps', 'subtitle': 'Snowy peaks', 'image': 'https://images.unsplash.com/photo-1531310197839-ccf54634509e?q=80&w=500', 'rating': '4.7', 'price': '\$180', 'category': 'Mountains'},
@@ -46,9 +46,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
     {'title': 'Louvre Museum', 'subtitle': 'World of Art', 'image': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=500', 'rating': '4.8', 'price': '\$50', 'category': 'Art'},
   ];
 
-  void _scrollToTop() => _scrollController.animateTo(0, duration: const Duration(milliseconds: 600), curve: Curves.easeInOutCubic);
-  void _scrollToBottom() => _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 600), curve: Curves.easeInOutCubic);
-
   List<Map<String, String>> get filteredDestinations {
     if (selectedCategory == 0) return allDestinations;
     return allDestinations.where((d) => d['category'] == categories[selectedCategory]['name']).toList();
@@ -56,254 +53,223 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = Theme.of(context).scaffoldBackgroundColor;
     final cardColor = Theme.of(context).cardColor;
-    final textColor = isDarkMode ? Colors.white : _darkText;
-    final secondaryTextColor = isDarkMode ? Colors.white70 : _warmGray;
+    final textColor = isDark ? Colors.white : _darkText;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'top_btn',
-            onPressed: _scrollToTop,
-            backgroundColor: isDarkMode ? const Color(0xFF2C2C2C) : Colors.white,
-            elevation: 4,
-            mini: false,
-            child: const Icon(Icons.arrow_upward_rounded, color: _coral),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'bottom_btn',
-            onPressed: _scrollToBottom,
-            backgroundColor: _coral,
-            elevation: 4,
-            mini: false,
-            child: const Icon(Icons.arrow_downward_rounded, color: Colors.white),
-          ),
-        ],
-      ),
+      backgroundColor: bg,
       body: SafeArea(
         child: SingleChildScrollView(
-          controller: _scrollController,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
+                // Top bar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(Icons.arrow_back_ios_new, size: 20, color: textColor),
-                          ),
-                        ),
-                        const SizedBox(width: 15),
-                        Text(
-                          'Discover',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textColor),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Explore Worlds',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: textColor,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: TextField(
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          hintText: 'Search destinations...',
-                          hintStyle: TextStyle(color: secondaryTextColor),
-                          border: InputBorder.none,
-                          icon: const Icon(Icons.search, color: _coral),
-                        ),
-                      ),
-                    ),
+                    _circleBtn(Icons.arrow_back_ios_new, isDark, cardColor, textColor, () => Navigator.pop(context)),
+                    Row(children: [
+                      _circleBtn(Icons.tune_rounded, isDark, cardColor, textColor, () {}),
+                      const SizedBox(width: 12),
+                      _circleBtn(Icons.bookmark_outline_rounded, isDark, cardColor, textColor, () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedTripsPage()));
+                      }),
+                    ]),
                   ],
                 ),
-              ),
-              // Kategoriler
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: categories.asMap().entries.map((entry) {
-                    int index = entry.key;
-                    var category = entry.value;
-                    bool isSelected = selectedCategory == index;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: GestureDetector(
-                        onTap: () => setState(() => selectedCategory = index),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected ? _coral : cardColor,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              if (isSelected)
-                                BoxShadow(
-                                  color: _coral.withOpacity(0.3),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 5),
-                                )
-                            ],
-                          ),
-                          child: Text(
-                            '${category['icon']} ${category['name']}',
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : textColor,
-                              fontWeight: FontWeight.bold,
+                const SizedBox(height: 28),
+
+                // Big title
+                Text(
+                  'Select\ndestination',
+                  style: GoogleFonts.playfairDisplay(fontSize: 38, fontWeight: FontWeight.w800, color: textColor, height: 1.1),
+                ),
+                const SizedBox(height: 20),
+
+                // Search bar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
+                  ),
+                  child: TextField(
+                    style: GoogleFonts.inter(color: textColor, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Search destinations...',
+                      hintStyle: GoogleFonts.inter(color: isDark ? Colors.white38 : _warmGray, fontSize: 14),
+                      border: InputBorder.none,
+                      icon: Icon(Icons.search_rounded, color: isDark ? Colors.white38 : _warmGray, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Category chips with icons
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: categories.asMap().entries.map((entry) {
+                      int index = entry.key;
+                      var cat = entry.value;
+                      bool isSelected = selectedCategory == index;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: GestureDetector(
+                          onTap: () => setState(() => selectedCategory = index),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isSelected ? _accent : (isDark ? const Color(0xFF2A2A2A) : Colors.white),
+                              borderRadius: BorderRadius.circular(30),
+                              border: isSelected ? null : Border.all(color: isDark ? Colors.white12 : const Color(0xFFE0DDD5)),
                             ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(cat['icon'] as IconData, size: 16, color: isSelected ? Colors.white : (isDark ? Colors.white60 : _warmGray)),
+                              const SizedBox(width: 6),
+                              Text(cat['name'] as String, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : (isDark ? Colors.white70 : _darkText))),
+                            ]),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: filteredDestinations.map((d) => _buildCard(d)).toList(),
+                const SizedBox(height: 24),
+
+                // 2-column grid
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.72,
+                  ),
+                  itemCount: filteredDestinations.length,
+                  itemBuilder: (context, index) => _gridCard(filteredDestinations[index], isDark, cardColor, textColor),
                 ),
-              ),
-              const SizedBox(height: 100),
-            ],
+
+                const SizedBox(height: 100),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCard(Map<String, String> d) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = Theme.of(context).cardColor;
-    final textColor = isDarkMode ? Colors.white : _darkText;
-    final secondaryTextColor = isDarkMode ? Colors.white70 : _warmGray;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05),
-            blurRadius: 10,
-          )
-        ],
+  Widget _circleBtn(IconData icon, bool isDark, Color cardColor, Color textColor, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44, height: 44,
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withAlpha(15) : Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
+          boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 10, offset: const Offset(0, 2))],
+        ),
+        child: Icon(icon, size: 18, color: isDark ? Colors.white70 : textColor),
       ),
+    );
+  }
+
+  Widget _gridCard(Map<String, String> d, bool isDark, Color cardColor, Color textColor) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DestinationDetailPage(destination: d))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: Image.network(d['image']!, height: 200, width: double.infinity, fit: BoxFit.cover),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Expanded(
+            child: Stack(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      d['title']!,
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 18),
-                        const SizedBox(width: 4),
-                        Text(
-                          d['rating']!,
-                          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
-                        ),
-                      ],
-                    ),
-                  ],
+                // Image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: CachedNetworkImage(
+                    imageUrl: d['image']!,
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(color: isDark ? Colors.grey[800] : Colors.grey[200]),
+                    errorWidget: (_, __, ___) => Container(color: isDark ? Colors.grey[800] : Colors.grey[200], child: const Icon(Icons.image_not_supported_outlined)),
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(d['subtitle']!, style: TextStyle(color: secondaryTextColor)),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${d['price']}/day',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _coral),
+                // Bottom gradient
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0.4, 1.0],
+                        colors: [Colors.transparent, Colors.black.withAlpha(140)],
+                      ),
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () async {
-                            await _authService.saveTrip({
-                              'title': d['title']!,
-                              'subtitle': d['subtitle']!,
-                              'image': d['image']!,
-                              'rating': d['rating']!,
-                            });
-                            if (mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const SavedTripsPage()),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.bookmark_border, color: _coral),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DestinationDetailPage(destination: d),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _coral,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Details'),
-                        ),
-                      ],
+                  ),
+                ),
+                // Star/save button
+                Positioned(
+                  top: 10, right: 10,
+                  child: GestureDetector(
+                    onTap: () async {
+                      await _authService.saveTrip({
+                        'title': d['title']!,
+                        'subtitle': d['subtitle']!,
+                        'image': d['image']!,
+                        'rating': d['rating']!,
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('${d['title']} saved!', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                          backgroundColor: _accent,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          duration: const Duration(seconds: 1),
+                        ));
+                      }
+                    },
+                    child: Container(
+                      width: 34, height: 34,
+                      decoration: BoxDecoration(color: Colors.white.withAlpha(200), shape: BoxShape.circle),
+                      child: const Icon(Icons.star_outline_rounded, size: 18, color: _darkText),
                     ),
-                  ],
+                  ),
+                ),
+                // Rating
+                Positioned(
+                  bottom: 10, left: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.black.withAlpha(100), borderRadius: BorderRadius.circular(8)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
+                      const SizedBox(width: 3),
+                      Text(d['rating']!, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ]),
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            d['category']!.toUpperCase(),
+            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: _warmGray, letterSpacing: 1.5),
+          ),
+          const SizedBox(height: 2),
+          Text(d['title']!, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: textColor), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );

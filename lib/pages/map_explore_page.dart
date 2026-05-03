@@ -11,6 +11,7 @@ import '../models/place_model.dart';
 import '../models/review_model.dart';
 import '../services/place_service.dart';
 import 'place_swipe_card.dart';
+import 'package:flutter/foundation.dart';
 
 class MapExplorePage extends StatefulWidget {
   const MapExplorePage({super.key});
@@ -29,6 +30,7 @@ class _MapExplorePageState extends State<MapExplorePage> {
   List<PlaceModel> _filtered = [];
   List<Map<String, dynamic>> _liked = [];
   List<CityData> _searchResults = [];
+  StreamSubscription? _likedSub;
   bool _loading = false, _searching = false, _showSwiper = true, _showSearch = false;
   LatLng? _userLoc;
   int _cardIdx = 0;
@@ -56,13 +58,16 @@ class _MapExplorePageState extends State<MapExplorePage> {
   void initState() {
     super.initState();
     _initLocation();
-    _placeService.getLikedPlacesStream().listen((p) {
+    _likedSub = _placeService.getLikedPlacesStream().listen((p) {
       if (mounted) setState(() => _liked = p);
+    }, onError: (e) {
+      debugPrint('Liked places stream error: $e');
     });
   }
 
   @override
   void dispose() {
+    _likedSub?.cancel();
     _swiperController.dispose();
     _mapController.dispose();
     _searchCtrl.dispose();
@@ -125,16 +130,31 @@ class _MapExplorePageState extends State<MapExplorePage> {
   void _onSwipe(int prev, int? cur, CardSwiperDirection dir) {
     if (prev >= _filtered.length) return;
     if (dir == CardSwiperDirection.right) {
-      _placeService.likePlace(_filtered[prev]);
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('${_filtered[prev].name} saved!', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-        backgroundColor: const Color(0xFF2ECC71),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        duration: const Duration(seconds: 1),
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-      ));
+      final place = _filtered[prev];
+      _placeService.likePlace(place).then((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${place.name} saved!', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          backgroundColor: const Color(0xFF2ECC71),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          duration: const Duration(seconds: 1),
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+        ));
+      }).catchError((e) {
+        debugPrint('Like place error: $e');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to save ${place.name}', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          duration: const Duration(seconds: 2),
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+        ));
+      });
     }
     setState(() => _cardIdx = cur ?? _filtered.length);
   }
