@@ -183,45 +183,8 @@ class DestinationDetailPage extends StatelessWidget {
                     style: GoogleFonts.inter(color: isDark ? Colors.white60 : _warmGray, fontSize: 14, height: 1.7),
                   ),
                 ),
-                const SizedBox(height: 120),
+                const SizedBox(height: 40),
               ],
-            ),
-          ),
-
-          // Bottom booking bar
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                boxShadow: [BoxShadow(color: Colors.black.withAlpha(isDark ? 40 : 10), blurRadius: 20, offset: const Offset(0, -5))],
-              ),
-              child: Row(children: [
-                Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('From', style: GoogleFonts.inter(fontSize: 12, color: _warmGray)),
-                  const SizedBox(height: 2),
-                  Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text(destination['price'] ?? '\$80', style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.w800, color: textColor)),
-                    Padding(padding: const EdgeInsets.only(bottom: 3), child: Text('/night', style: GoogleFonts.inter(fontSize: 14, color: _warmGray))),
-                  ]),
-                ]),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _accentLight,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    child: Text('Book Now', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ]),
             ),
           ),
         ],

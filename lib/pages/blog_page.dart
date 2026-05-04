@@ -253,11 +253,17 @@ class _BlogPageState extends State<BlogPage> {
   // Yardımcı UI Widget'ları (Kısa tutuldu)
   Widget _buildDropdown(String label, String? value, List<String> items, Function(String?) onChanged, IconData icon, {bool enabled = true}) {
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       value: value,
-      items: items.toSet().map((e) => DropdownMenuItem(value: e, child: Text(e, style: GoogleFonts.inter(fontSize: 13), overflow: TextOverflow.ellipsis))).toList(),
+      items: items.toSet().map((e) => DropdownMenuItem(
+        value: e, 
+        child: Text(e, style: GoogleFonts.inter(fontSize: 12), overflow: TextOverflow.ellipsis)
+      )).toList(),
       onChanged: enabled ? onChanged : null,
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(fontSize: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         prefixIcon: Icon(icon, color: _accent, size: 18),
         filled: true,
         fillColor: Theme.of(context).cardColor.withOpacity(0.5),

@@ -5,8 +5,6 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 class GeminiService {
-  // NOT: Eğer AI hala çalışmıyorsa https://aistudio.google.com/ adresinden 
-  // yeni bir API Key alıp buraya yapıştırmayı deneyin.
   static const String _apiKey = 'AIzaSyCJUw4lfoUQwZjl0Y74_raDTww1OxzLM6A';
   
   late final GenerativeModel _model;
@@ -15,7 +13,6 @@ class GeminiService {
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: _apiKey,
-      // Güvenlik ayarlarını en düşüğe çekiyoruz ki basit seyahat soruları engellenmesin
       safetySettings: [
         SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
         SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
