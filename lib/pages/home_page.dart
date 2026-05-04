@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import 'settings_page.dart';
 import 'planner_page.dart';
 import 'trip_details_page.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -129,48 +130,22 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: Row(
                 children: [
-                  // Avatar with PopupMenu
-                  Theme(
-                    data: Theme.of(context).copyWith(cardColor: cardColor),
-                    child: PopupMenuButton<String>(
-                      offset: const Offset(0, 56),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      onSelected: (value) async {
-                        if (value == 'settings') {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
-                        } else if (value == 'logout') {
-                          await _authService.signOut();
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'settings',
-                          child: Row(children: [
-                            const Icon(Icons.settings_outlined, size: 20, color: _accent),
-                            const SizedBox(width: 12),
-                            Text('Settings', style: GoogleFonts.inter(color: textColor)),
-                          ]),
-                        ),
-                        PopupMenuItem(
-                          value: 'logout',
-                          child: Row(children: [
-                            const Icon(Icons.logout_rounded, size: 20, color: Colors.redAccent),
-                            const SizedBox(width: 12),
-                            Text('Sign Out', style: GoogleFonts.inter(color: Colors.redAccent)),
-                          ]),
-                        ),
-                      ],
-                      child: Container(
-                        width: 48, height: 48,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [_accent, _accentLight]),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
-                            style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
-                          ),
+                  // Avatar leading to Settings
+                  GestureDetector(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage())),
+                    child: Container(
+                      width: 48, height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [_accent, _accentLight]),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: _accent.withAlpha(40), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
+                          style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
                         ),
                       ),
                     ),

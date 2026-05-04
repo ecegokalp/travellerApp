@@ -5,7 +5,7 @@ import 'discover_page.dart';
 import 'map_explore_page.dart';
 import 'blog_page.dart';
 import 'documents_page.dart';
-import 'settings_page.dart';
+import 'profile_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
     MapExplorePage(),
     BlogPage(),
     DocumentsPage(),
-    SettingsPage(),
+    ProfilePage(),
   ];
 
   static const _sunset = Color(0xFFFF6B6B);
