@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import 'details_page.dart';
-import 'saved_trips_page.dart';
+import 'blog_page.dart';
 
 class DiscoverPage extends StatefulWidget {
   const DiscoverPage({super.key});
@@ -72,12 +72,15 @@ class _DiscoverPageState extends State<DiscoverPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _circleBtn(Icons.arrow_back_ios_new, isDark, cardColor, textColor, () => Navigator.pop(context)),
+                    if (Navigator.canPop(context))
+                      _circleBtn(Icons.arrow_back_ios_new, isDark, cardColor, textColor, () => Navigator.pop(context))
+                    else
+                      const SizedBox(width: 44),
                     Row(children: [
                       _circleBtn(Icons.tune_rounded, isDark, cardColor, textColor, () {}),
                       const SizedBox(width: 12),
-                      _circleBtn(Icons.bookmark_outline_rounded, isDark, cardColor, textColor, () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedTripsPage()));
+                      _circleBtn(Icons.edit_note_rounded, isDark, cardColor, textColor, () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BlogPage()));
                       }),
                     ]),
                   ],
@@ -219,31 +222,24 @@ class _DiscoverPageState extends State<DiscoverPage> {
                     ),
                   ),
                 ),
-                // Star/save button
+                // Blog button
                 Positioned(
                   top: 10, right: 10,
                   child: GestureDetector(
-                    onTap: () async {
-                      await _authService.saveTrip({
-                        'title': d['title']!,
-                        'subtitle': d['subtitle']!,
-                        'image': d['image']!,
-                        'rating': d['rating']!,
-                      });
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('${d['title']} saved!', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                          backgroundColor: _accent,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          duration: const Duration(seconds: 1),
-                        ));
-                      }
+                    onTap: () {
+                      final parts = d['title']!.split(', ');
+                      final city = parts[0];
+                      final country = parts.length > 1 ? parts[1] : '';
+                      
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => BlogPage(
+                        initialCountry: country,
+                        initialCity: city,
+                      )));
                     },
                     child: Container(
                       width: 34, height: 34,
                       decoration: BoxDecoration(color: Colors.white.withAlpha(200), shape: BoxShape.circle),
-                      child: const Icon(Icons.star_outline_rounded, size: 18, color: _darkText),
+                      child: const Icon(Icons.edit_note_rounded, size: 18, color: _darkText),
                     ),
                   ),
                 ),

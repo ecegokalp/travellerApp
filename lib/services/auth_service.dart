@@ -175,4 +175,17 @@ class AuthService {
         .orderBy('savedAt', descending: true)
         .snapshots();
   }
+
+  /// Delete a saved trip
+  Future<void> deleteSavedTrip(String docId) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('saved_trips')
+        .doc(docId)
+        .delete();
+  }
 }

@@ -61,6 +61,56 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _deleteTrip(String tripId) async {
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('trips')
+          .doc(tripId)
+          .delete();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Trip deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting trip: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDelete(String tripId) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Trip'),
+        content: const Text('Are you sure you want to delete this trip plan?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.inter(color: _warmGray)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteTrip(tripId);
+            },
+            child: Text('Delete', style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -315,6 +365,21 @@ class _HomePageState extends State<HomePage> {
                           Positioned(
                             right: -10, top: -10,
                             child: Icon(Icons.flight_takeoff, color: Colors.white.withAlpha(30), size: 60),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () => _confirmDelete(docs[index].id),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withAlpha(20),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                              ),
+                            ),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(16),

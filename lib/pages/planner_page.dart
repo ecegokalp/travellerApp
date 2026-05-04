@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
+import '../services/gemini_service.dart';
 
 class PlannerPage extends StatefulWidget {
   final Map<String, dynamic>? existingTrip;
@@ -18,6 +19,7 @@ class PlannerPage extends StatefulWidget {
 
 class _PlannerPageState extends State<PlannerPage> {
   final AuthService _authService = AuthService();
+  final GeminiService _geminiService = GeminiService();
   final _formKey = GlobalKey<FormState>();
   
   final _cityController = TextEditingController();
@@ -31,6 +33,7 @@ class _PlannerPageState extends State<PlannerPage> {
 
   PlatformFile? _pickedHotelFile;
   PlatformFile? _pickedPlaceFile;
+  PlatformFile? _pickedFlightFile;
   bool _isUploading = false;
 
   DateTime? _startDate;
@@ -39,6 +42,11 @@ class _PlannerPageState extends State<PlannerPage> {
   String _placeCurrency = 'TRY';
   String _budgetLimitCurrency = 'TRY';
   final _budgetLimitController = TextEditingController();
+  String _loadingMessage = 'AI is processing document...';
+  String? _existingHotelFileName;
+  String? _existingFlightFileName;
+  String? _existingHotelFileUrl;
+  String? _existingFlightFileUrl;
   final _currencyService = CurrencyService();
   Map<String, double>? _rates;
 
@@ -59,7 +67,11 @@ class _PlannerPageState extends State<PlannerPage> {
   double get _totalBudget {
     double hotelPrice = double.tryParse(_hotelPriceController.text) ?? 0;
     double placesPrice = _places.fold(0.0, (sum, item) => sum + ((item['price'] as num?)?.toDouble() ?? 0));
-    return hotelPrice + placesPrice;
+    double flight = double.tryParse(_flightController.text) ?? 0;
+    double food = double.tryParse(_foodController.text) ?? 0;
+    double transport = double.tryParse(_transportController.text) ?? 0;
+    double other = double.tryParse(_otherController.text) ?? 0;
+    return hotelPrice + placesPrice + flight + food + transport + other;
   }
 
   double get _totalBudgetTRY {
@@ -95,6 +107,10 @@ class _PlannerPageState extends State<PlannerPage> {
     _hotelNameController.text = d['hotelName'] ?? '';
     _hotelPriceController.text = (d['hotelPrice'] ?? 0).toString();
     _hotelCurrency = d['hotelCurrency'] ?? 'TRY';
+    _existingHotelFileName = d['hotelDocumentName'];
+    _existingFlightFileName = d['flightDocumentName'];
+    _existingHotelFileUrl = d['hotelDocumentUrl'];
+    _existingFlightFileUrl = d['flightDocumentUrl'];
     if (d['startDate'] != null) _startDate = (d['startDate'] as Timestamp).toDate();
     if (d['endDate'] != null) _endDate = (d['endDate'] as Timestamp).toDate();
     if (d['budgetLimit'] != null) _budgetLimitController.text = d['budgetLimit'].toString();
@@ -117,27 +133,173 @@ class _PlannerPageState extends State<PlannerPage> {
   }
 
   Future<void> _pickDate(bool isStart) async {
-    final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now().subtract(const Duration(days: 30)), lastDate: DateTime.now().add(const Duration(days: 730)));
-    if (picked != null) setState(() { if (isStart) { _startDate = picked; } else { _endDate = picked; } });
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: (isStart ? _startDate : _endDate) ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 1825)),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStart) {
+          _startDate = picked;
+          if (_endDate != null && _startDate!.isAfter(_endDate!)) {
+            _endDate = null;
+          }
+        } else {
+          _endDate = picked;
+          if (_startDate != null && _endDate!.isBefore(_startDate!)) {
+            _startDate = null;
+          }
+        }
+      });
+    }
   }
 
   Future<void> _pickHotelFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'png', 'doc'],
+      allowedExtensions: ['pdf', 'jpg', 'png'],
     );
     if (result != null) {
       setState(() => _pickedHotelFile = result.files.first);
+      _processDocumentWithAI(result.files.first, type: 'hotel');
+    }
+  }
+
+  Future<void> _pickFlightFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'png'],
+    );
+    if (result != null) {
+      setState(() => _pickedFlightFile = result.files.first);
+      _processDocumentWithAI(result.files.first, type: 'flight');
     }
   }
 
   Future<void> _pickPlaceFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'png', 'doc'],
+      allowedExtensions: ['pdf', 'jpg', 'png'],
     );
     if (result != null) {
       setState(() => _pickedPlaceFile = result.files.first);
+      _processDocumentWithAI(result.files.first, type: 'place');
+    }
+  }
+
+  DateTime? _parseDate(dynamic dateValue) {
+    if (dateValue == null) return null;
+    String dateStr = dateValue.toString();
+    try {
+      // Standart format: 2024-05-15
+      return DateTime.parse(dateStr);
+    } catch (_) {
+      try {
+        // Alternatif: 15.05.2024 veya 15/05/2024
+        List<String> parts = dateStr.split(RegExp(r'[\.\/-]'));
+        if (parts.length == 3) {
+          if (parts[0].length == 4) { // YYYY-MM-DD
+            return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          } else { // DD-MM-YYYY
+            return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<void> _processDocumentWithAI(PlatformFile pickedFile, {required String type}) async {
+    if (pickedFile.path == null) return;
+
+    setState(() {
+      _isUploading = true;
+      _loadingMessage = 'AI is analyzing your ${type == 'place' ? 'booking' : type}...';
+    });
+    
+    try {
+      final file = File(pickedFile.path!);
+      final data = await _geminiService.processDocument(file);
+
+      if (data != null && mounted) {
+        setState(() {
+          // General Info
+          if (data['city'] != null && _cityController.text.isEmpty) {
+            _cityController.text = data['city'].toString();
+          }
+          if (data['country'] != null && _countryController.text.isEmpty) {
+            _countryController.text = data['country'].toString();
+          }
+
+          if (type == 'place') {
+            if (data['name'] != null) _placeNameController.text = data['name'].toString();
+            if (data['price'] != null) _placePriceController.text = data['price'].toString();
+            if (data['currency'] != null) {
+              String cur = data['currency'].toString().toUpperCase();
+              if (CurrencyService.supportedCurrencies.contains(cur)) {
+                _placeCurrency = cur;
+              }
+            }
+          } else if (type == 'hotel') {
+            if (data['name'] != null) _hotelNameController.text = data['name'].toString();
+            if (data['price'] != null) _hotelPriceController.text = data['price'].toString();
+            if (data['currency'] != null) {
+              String cur = data['currency'].toString().toUpperCase();
+              if (CurrencyService.supportedCurrencies.contains(cur)) {
+                _hotelCurrency = cur;
+              }
+            }
+          } else if (type == 'flight') {
+            if (data['price'] != null) _flightController.text = data['price'].toString();
+            if (data['currency'] != null) {
+              String cur = data['currency'].toString().toUpperCase();
+              if (CurrencyService.supportedCurrencies.contains(cur)) {
+                _flightCurrency = cur;
+              }
+            }
+          }
+
+          // Dates logic: Expand the trip range based on document dates
+          DateTime? aiStart = _parseDate(data['startDate']);
+          DateTime? aiEnd = _parseDate(data['endDate']);
+
+          if (aiStart != null) {
+            if (_startDate == null || aiStart.isBefore(_startDate!)) _startDate = aiStart;
+            if (_endDate == null || aiStart.isAfter(_endDate!)) _endDate = aiStart;
+          }
+          if (aiEnd != null) {
+            if (_startDate == null || aiEnd.isBefore(_startDate!)) _startDate = aiEnd;
+            if (_endDate == null || aiEnd.isAfter(_endDate!)) _endDate = aiEnd;
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI extracted ${type == 'flight' ? 'flight' : type} details and dates!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('AI could not extract data from this document. Please enter details manually.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('AI Processing error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('AI Processing failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -179,20 +341,30 @@ class _PlannerPageState extends State<PlannerPage> {
       final user = _authService.currentUser;
       if (user == null) return;
 
-      setState(() => _isUploading = true);
+      setState(() {
+        _isUploading = true;
+        _loadingMessage = 'Saving your trip plan...';
+      });
 
       try {
         // Upload Hotel Doc
-        String? hotelFileUrl;
+        String? hotelFileUrl = _existingHotelFileUrl;
         if (_pickedHotelFile != null) {
           hotelFileUrl = await _uploadFile(_pickedHotelFile!, user.uid, 'hotel_documents');
+        }
+
+        // Upload Flight Doc
+        String? flightFileUrl = _existingFlightFileUrl;
+        if (_pickedFlightFile != null) {
+          flightFileUrl = await _uploadFile(_pickedFlightFile!, user.uid, 'flight_documents');
         }
 
         // Upload Place Docs
         List<Map<String, dynamic>> finalPlaces = [];
         for (var place in _places) {
-          String? placeFileUrl;
-          String? fileName;
+          String? placeFileUrl = place['documentUrl'];
+          String? fileName = place['documentName'];
+          
           if (place['tempFile'] != null) {
             PlatformFile pf = place['tempFile'];
             placeFileUrl = await _uploadFile(pf, user.uid, 'place_documents');
@@ -215,7 +387,9 @@ class _PlannerPageState extends State<PlannerPage> {
           'hotelPrice': double.tryParse(_hotelPriceController.text) ?? 0,
           'hotelCurrency': _hotelCurrency,
           'hotelDocumentUrl': hotelFileUrl,
-          'hotelDocumentName': _pickedHotelFile?.name,
+          'hotelDocumentName': _pickedHotelFile?.name ?? _existingHotelFileName,
+          'flightDocumentUrl': flightFileUrl,
+          'flightDocumentName': _pickedFlightFile?.name ?? _existingFlightFileName,
           'places': finalPlaces,
           'totalBudget': _totalBudget,
           'totalBudgetTRY': _totalBudgetTRY,
@@ -323,6 +497,35 @@ class _PlannerPageState extends State<PlannerPage> {
                     Padding(padding: const EdgeInsets.only(top: 6), child: Text('${_endDate!.difference(_startDate!).inDays} days', style: TextStyle(fontSize: 13, color: _coral, fontWeight: FontWeight.w600))),
                   const SizedBox(height: 24),
 
+                  _buildSectionTitle('Flight Details', textColor),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.flight_takeoff, color: Colors.blue),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _pickedFlightFile?.name ?? _existingFlightFileName ?? 'Upload flight ticket to auto-fill',
+                            style: TextStyle(color: textColor, fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _pickFlightFile,
+                          child: const Text('Select Ticket', style: TextStyle(color: Colors.blue)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   _buildSectionTitle('Accommodation', textColor),
                   const SizedBox(height: 12),
                   _buildTextField(_hotelNameController, 'Hotel Name', Icons.hotel),
@@ -348,7 +551,7 @@ class _PlannerPageState extends State<PlannerPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            _pickedHotelFile?.name ?? 'No hotel document selected',
+                            _pickedHotelFile?.name ?? _existingHotelFileName ?? 'No hotel document selected',
                             style: TextStyle(color: textColor, fontSize: 14),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -421,7 +624,7 @@ class _PlannerPageState extends State<PlannerPage> {
                                 subtitle: Text(
                                   place['tempFile'] != null 
                                     ? '📎 ${place['tempFile'].name}' 
-                                    : 'No document',
+                                    : (place['documentName'] != null ? '📎 ${place['documentName']}' : 'No document'),
                                   style: const TextStyle(fontSize: 12),
                                 ),
                                 trailing: Row(
@@ -493,6 +696,20 @@ class _PlannerPageState extends State<PlannerPage> {
               ),
             ),
           ),
+          if (_isUploading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: _coral),
+                    const SizedBox(height: 16),
+                    Text(_loadingMessage, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
