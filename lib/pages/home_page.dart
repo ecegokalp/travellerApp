@@ -7,6 +7,7 @@ import 'settings_page.dart';
 import 'planner_page.dart';
 import 'trip_details_page.dart';
 import 'profile_page.dart';
+import 'blog_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -373,13 +374,31 @@ class _HomePageState extends State<HomePage> {
                                   Text(country, style: GoogleFonts.inter(color: Colors.white.withAlpha(180), fontSize: 11, fontWeight: FontWeight.w500)),
                                 ],
                                 const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withAlpha(35),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text('Details', style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withAlpha(35),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text('Details', style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                                    ),
+                                    const Spacer(),
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(context, MaterialPageRoute(builder: (_) => BlogPage(initialCity: city, initialCountry: country)));
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withAlpha(40),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.edit_note_rounded, color: Colors.white, size: 16),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

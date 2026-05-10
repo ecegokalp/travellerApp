@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import 'details_page.dart';
 import 'blog_page.dart';
+import 'profile_page.dart';
 
 class DiscoverPage extends StatefulWidget {
   const DiscoverPage({super.key});
@@ -19,6 +20,9 @@ class _DiscoverPageState extends State<DiscoverPage> {
   static const _warmGray = Color(0xFF6B7280);
 
   int selectedCategory = 0;
+  List<Map<String, dynamic>> _foundUsers = [];
+  bool _isSearchingUsers = false;
+  final TextEditingController _searchController = TextEditingController();
 
   final List<Map<String, dynamic>> categories = [
     {'name': 'All', 'icon': Icons.apps_rounded},
@@ -103,9 +107,24 @@ class _DiscoverPageState extends State<DiscoverPage> {
                     border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
                   ),
                   child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) async {
+                      if (val.length > 2) {
+                        setState(() => _isSearchingUsers = true);
+                        final users = await _authService.searchUsers(val);
+                        setState(() {
+                          _foundUsers = users;
+                        });
+                      } else {
+                        setState(() {
+                          _isSearchingUsers = false;
+                          _foundUsers = [];
+                        });
+                      }
+                    },
                     style: GoogleFonts.inter(color: textColor, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: 'Search destinations...',
+                      hintText: 'Search destinations or travellers...',
                       hintStyle: GoogleFonts.inter(color: isDark ? Colors.white38 : _warmGray, fontSize: 14),
                       border: InputBorder.none,
                       icon: Icon(Icons.search_rounded, color: isDark ? Colors.white38 : _warmGray, size: 20),
@@ -114,6 +133,55 @@ class _DiscoverPageState extends State<DiscoverPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
+
+                if (_foundUsers.isNotEmpty || _searchController.text.isEmpty) ...[
+                  Text(_searchController.text.isEmpty ? 'Suggested Travellers' : 'Travellers', 
+                      style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: textColor)),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 100,
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: _searchController.text.isEmpty 
+                          ? _authService.getSuggestedUsers() 
+                          : Future.value(_foundUsers),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                        final users = snapshot.data!;
+                        if (users.isEmpty) return const SizedBox.shrink();
+
+                        return ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: users.length,
+                          itemBuilder: (context, index) {
+                            final user = users[index];
+                            return GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage(userId: user['uid']))),
+                              child: Container(
+                                width: 80,
+                                margin: const EdgeInsets.only(right: 16),
+                                child: Column(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 30,
+                                      backgroundColor: _accent.withAlpha(30),
+                                      backgroundImage: (user['photoUrl'] ?? '').isNotEmpty ? NetworkImage(user['photoUrl']) : null,
+                                      child: (user['photoUrl'] ?? '').isEmpty 
+                                          ? Text(user['fullName']?[0].toUpperCase() ?? 'U', style: const TextStyle(color: _accent, fontWeight: FontWeight.bold))
+                                          : null,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(user['username'] ?? user['fullName'] ?? '', style: GoogleFonts.inter(fontSize: 12, color: textColor), overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
 
                 // Category chips with icons
                 SingleChildScrollView(

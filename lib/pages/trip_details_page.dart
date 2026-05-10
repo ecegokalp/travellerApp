@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import 'planner_page.dart';
+import 'blog_page.dart';
 
 class TripDetailsPage extends StatefulWidget {
   final Map<String, dynamic> tripData;
@@ -96,6 +97,14 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
         title: Text('$city Trip'),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share_rounded, size: 22, color: _coral),
+            onPressed: () {
+              final city = widget.tripData['city'];
+              final country = widget.tripData['country'];
+              Navigator.push(context, MaterialPageRoute(builder: (_) => BlogPage(initialCity: city, initialCountry: country)));
+            },
+          ),
           if (widget.tripId != null) ...[
             IconButton(
               icon: const Icon(Icons.edit_rounded, size: 22),

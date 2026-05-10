@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import 'user_list_page.dart';
+import 'settings_page.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final String? userId;
+  const ProfilePage({super.key, this.userId});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -14,10 +17,16 @@ class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
   String _displayName = '';
   String _username = '';
+  String _photoUrl = '';
   int _countryCount = 0;
   int _cityCount = 0;
-  int _followerCount = 1240; // Placeholder
-  int _followingCount = 458; // Placeholder
+  int _followerCount = 0;
+  int _followingCount = 0;
+  bool _isFollowing = false;
+  bool _isLoading = true;
+
+  String get _effectiveUserId => widget.userId ?? _authService.currentUser?.uid ?? '';
+  bool get _isMe => _effectiveUserId == _authService.currentUser?.uid;
 
   static const _accent = Color(0xFFFF6B6B);
   static const _darkText = Color(0xFF1F2937);
@@ -30,22 +39,35 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadProfileData() async {
-    final user = _authService.currentUser;
-    if (user == null) return;
+    if (_effectiveUserId.isEmpty) return;
 
     // Load basic info
-    final profile = await _authService.getUserProfile(user.uid);
+    final profile = await _authService.getUserProfile(_effectiveUserId);
     if (mounted) {
       setState(() {
         _displayName = profile?['fullName'] ?? 'Traveller';
         _username = profile?['username'] ?? 'traveller';
+        _photoUrl = profile?['photoUrl'] ?? '';
+        _followerCount = profile?['followerCount'] ?? 0;
+        _followingCount = profile?['followingCount'] ?? 0;
+        _isLoading = false;
+      });
+    }
+
+    if (!_isMe) {
+      _authService.isFollowing(_effectiveUserId).listen((isFollowing) {
+        if (mounted) {
+          setState(() {
+            _isFollowing = isFollowing;
+          });
+        }
       });
     }
 
     // Load stats from blogs
     final blogsQuery = await FirebaseFirestore.instance
         .collection('users')
-        .doc(user.uid)
+        .doc(_effectiveUserId)
         .collection('blogs')
         .get();
 
@@ -82,12 +104,13 @@ class _ProfilePageState extends State<ProfilePage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: textColor),
-            onPressed: () {
-              // Settings logic here
-            },
-          ),
+          if (_isMe)
+            IconButton(
+              icon: Icon(Icons.settings_outlined, color: textColor),
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
+              },
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -106,17 +129,42 @@ class _ProfilePageState extends State<ProfilePage> {
                       boxShadow: [
                         BoxShadow(color: _accent.withAlpha(50), blurRadius: 20, offset: const Offset(0, 10)),
                       ],
+                      image: _photoUrl.isNotEmpty 
+                          ? DecorationImage(image: NetworkImage(_photoUrl), fit: BoxFit.cover) 
+                          : null,
                     ),
-                    child: Center(
+                    child: _photoUrl.isEmpty ? Center(
                       child: Text(
                         _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
                         style: GoogleFonts.playfairDisplay(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
-                    ),
+                    ) : null,
                   ),
                   const SizedBox(height: 16),
                   Text(_displayName, style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold, color: textColor)),
                   Text('@$_username', style: GoogleFonts.inter(color: _warmGray, fontSize: 14)),
+                  if (!_isMe) ...[
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (_isFollowing) {
+                          await _authService.unfollowUser(_effectiveUserId);
+                        } else {
+                          await _authService.followUser(_effectiveUserId);
+                        }
+                        // Refresh data
+                        _loadProfileData();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isFollowing ? Colors.grey[200] : _accent,
+                        foregroundColor: _isFollowing ? Colors.black87 : Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      ),
+                      child: Text(_isFollowing ? 'Unfollow' : 'Follow', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -130,8 +178,37 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   _buildStatItem('Countries', _countryCount.toString(), textColor),
                   _buildStatItem('Cities', _cityCount.toString(), textColor),
-                  _buildStatItem('Followers', _followerCount >= 1000 ? '${(_followerCount / 1000).toStringAsFixed(1)}k' : _followerCount.toString(), textColor),
-                  _buildStatItem('Following', _followingCount.toString(), textColor),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => UserListPage(
+                          title: 'Followers',
+                          userId: _effectiveUserId,
+                          isFollowers: true,
+                        ),
+                      ),
+                    ),
+                    child: _buildStatItem(
+                        'Followers',
+                        _followerCount >= 1000
+                            ? '${(_followerCount / 1000).toStringAsFixed(1)}k'
+                            : _followerCount.toString(),
+                        textColor),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => UserListPage(
+                          title: 'Following',
+                          userId: _effectiveUserId,
+                          isFollowers: false,
+                        ),
+                      ),
+                    ),
+                    child: _buildStatItem('Following', _followingCount.toString(), textColor),
+                  ),
                 ],
               ),
             ),
@@ -167,13 +244,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildBlogList() {
-    final user = _authService.currentUser;
-    if (user == null) return const SizedBox.shrink();
+    if (_effectiveUserId.isEmpty) return const SizedBox.shrink();
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(_effectiveUserId)
           .collection('blogs')
           .orderBy('createdAt', descending: true)
           .snapshots(),

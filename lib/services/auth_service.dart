@@ -55,6 +55,8 @@ class AuthService {
           'username': username,
           'createdAt': FieldValue.serverTimestamp(),
           'photoUrl': '',
+          'followerCount': 0,
+          'followingCount': 0,
         });
         debugPrint('DEBUG: Firestore kaydı başarılı!');
         await credential.user!.updateDisplayName(fullName);
@@ -124,6 +126,8 @@ class AuthService {
         'fullName': user.displayName ?? '',
         'username': '',
         'createdAt': FieldValue.serverTimestamp(),
+        'followerCount': 0,
+        'followingCount': 0,
       });
       return;
     }
@@ -187,5 +191,237 @@ class AuthService {
         .collection('saved_trips')
         .doc(docId)
         .delete();
+  }
+
+  // --- Follow Feature ---
+
+  Future<void> followUser(String targetUid) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null || myUid == targetUid) return;
+
+    final batch = _firestore.batch();
+
+    // Add to my following
+    batch.set(
+      _firestore.collection('users').doc(myUid).collection('following').doc(targetUid),
+      {'timestamp': FieldValue.serverTimestamp()},
+    );
+
+    // Add to target's followers
+    batch.set(
+      _firestore.collection('users').doc(targetUid).collection('followers').doc(myUid),
+      {'timestamp': FieldValue.serverTimestamp()},
+    );
+
+    // Update counts
+    batch.update(_firestore.collection('users').doc(myUid), {
+      'followingCount': FieldValue.increment(1),
+    });
+    batch.update(_firestore.collection('users').doc(targetUid), {
+      'followerCount': FieldValue.increment(1),
+    });
+
+    await batch.commit();
+  }
+
+  Future<void> unfollowUser(String targetUid) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return;
+
+    final batch = _firestore.batch();
+
+    // Remove from my following
+    batch.delete(_firestore.collection('users').doc(myUid).collection('following').doc(targetUid));
+
+    // Remove from target's followers
+    batch.delete(_firestore.collection('users').doc(targetUid).collection('followers').doc(myUid));
+
+    // Update counts
+    batch.update(_firestore.collection('users').doc(myUid), {
+      'followingCount': FieldValue.increment(-1),
+    });
+    batch.update(_firestore.collection('users').doc(targetUid), {
+      'followerCount': FieldValue.increment(-1),
+    });
+
+    await batch.commit();
+  }
+
+  Stream<bool> isFollowing(String targetUid) {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return Stream.value(false);
+
+    return _firestore
+        .collection('users')
+        .doc(myUid)
+        .collection('following')
+        .doc(targetUid)
+        .snapshots()
+        .map((snap) => snap.exists);
+  }
+
+  /// Search users by username
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    if (query.isEmpty) return [];
+    
+    final snap = await _firestore
+        .collection('users')
+        .where('username', isGreaterThanOrEqualTo: query)
+        .where('username', isLessThanOrEqualTo: '$query\uf8ff')
+        .limit(20)
+        .get();
+
+    return snap.docs.map((doc) => doc.data()).toList();
+  }
+
+  /// Get suggested users (random or recent)
+  Future<List<Map<String, dynamic>>> getSuggestedUsers() async {
+    final snap = await _firestore
+        .collection('users')
+        .limit(10)
+        .get();
+
+    final myUid = currentUser?.uid;
+    return snap.docs
+        .map((doc) => doc.data())
+        .where((user) => user['uid'] != myUid)
+        .toList();
+  }
+
+  /// Get all blogs from all users (Community Feed)
+  Stream<QuerySnapshot> getCommunityFeed() {
+    return _firestore
+        .collectionGroup('blogs')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  /// Get blogs only from users I follow
+  Stream<QuerySnapshot> getFollowingFeed(List<String> followingIds) {
+    if (followingIds.isEmpty) {
+      // Return an empty stream or a specific way to handle no followers
+      return _firestore.collectionGroup('blogs').where('authorId', isEqualTo: 'NON_EXISTENT').snapshots();
+    }
+    
+    // Firestore whereIn limit is 30 (previously 10). 
+    // For more complex feeds, a different architecture is needed.
+    return _firestore
+        .collectionGroup('blogs')
+        .where('authorId', whereIn: followingIds.take(30).toList())
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  /// Get followers of a user
+  Stream<QuerySnapshot> getFollowers(String uid) {
+    return _firestore.collection('users').doc(uid).collection('followers').snapshots();
+  }
+
+  /// Get following of a user
+  Stream<QuerySnapshot> getFollowing(String uid) {
+    return _firestore.collection('users').doc(uid).collection('following').snapshots();
+  }
+
+  /// Get list of UIDs the user is following
+  Stream<List<String>> getFollowingUids(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('following')
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => doc.id).toList());
+  }
+
+  // --- Like & Comment Feature ---
+
+  Future<void> toggleLike(String authorId, String blogId) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return;
+
+    final docRef = _firestore
+        .collection('users')
+        .doc(authorId)
+        .collection('blogs')
+        .doc(blogId);
+
+    final likeRef = docRef.collection('likes').doc(myUid);
+    final likeDoc = await likeRef.get();
+
+    final batch = _firestore.batch();
+
+    if (likeDoc.exists) {
+      batch.delete(likeRef);
+      batch.update(docRef, {'likeCount': FieldValue.increment(-1)});
+    } else {
+      batch.set(likeRef, {'timestamp': FieldValue.serverTimestamp()});
+      batch.update(docRef, {'likeCount': FieldValue.increment(1)});
+    }
+
+    await batch.commit();
+  }
+
+  Stream<bool> isLiked(String authorId, String blogId) {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return Stream.value(false);
+
+    return _firestore
+        .collection('users')
+        .doc(authorId)
+        .collection('blogs')
+        .doc(blogId)
+        .collection('likes')
+        .doc(myUid)
+        .snapshots()
+        .map((snap) => snap.exists);
+  }
+
+  Future<void> addComment(String authorId, String blogId, String text) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null || text.trim().isEmpty) return;
+
+    final userDoc = await getUserProfile(myUid);
+
+    final docRef = _firestore
+        .collection('users')
+        .doc(authorId)
+        .collection('blogs')
+        .doc(blogId);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.set(docRef.collection('comments').doc(), {
+        'uid': myUid,
+        'username': userDoc?['username'] ?? 'Traveller',
+        'fullName': userDoc?['fullName'] ?? 'Traveller',
+        'text': text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      transaction.update(docRef, {'commentCount': FieldValue.increment(1)});
+    });
+  }
+
+  Stream<QuerySnapshot> getComments(String authorId, String blogId) {
+    return _firestore
+        .collection('users')
+        .doc(authorId)
+        .collection('blogs')
+        .doc(blogId)
+        .collection('comments')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  Future<void> updateProfilePicture(String url) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    await _firestore.collection('users').doc(user.uid).update({'photoUrl': url});
+    await user.updatePhotoURL(url);
+  }
+
+  Future<void> updateUsername(String username) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    await _firestore.collection('users').doc(user.uid).update({'username': username});
   }
 }

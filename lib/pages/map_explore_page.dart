@@ -11,6 +11,7 @@ import '../models/place_model.dart';
 import '../models/review_model.dart';
 import '../services/place_service.dart';
 import 'place_swipe_card.dart';
+import 'blog_page.dart';
 import 'package:flutter/foundation.dart';
 
 class MapExplorePage extends StatefulWidget {
@@ -368,12 +369,23 @@ class _MapExplorePageState extends State<MapExplorePage> {
         },
         cardBuilder: (_, index, rawX, __) {
           final tx = rawX.toDouble() / 100.0;
+          final place = _filtered[index];
           return GestureDetector(
-            onTap: () => _showPlaceDetail(_filtered[index]),
+            onTap: () => _showPlaceDetail(place),
             child: Stack(children: [
-              PlaceSwipeCard(place: _filtered[index]),
+              PlaceSwipeCard(place: place),
               if (tx < -0.05) _swipeOverlay('NOPE', Colors.red, tx, Alignment.topRight, 0.3),
               if (tx > 0.05) _swipeOverlay('LIKE', Colors.green, tx, Alignment.topLeft, -0.3),
+              Positioned(
+                top: 60,
+                right: 14,
+                child: FloatingActionButton.small(
+                  heroTag: 'share_${place.id}',
+                  backgroundColor: Colors.white.withAlpha(200),
+                  onPressed: () => _shareStory(place),
+                  child: const Icon(Icons.edit_note_rounded, color: _coral),
+                ),
+              ),
             ]),
           );
         },
@@ -495,6 +507,18 @@ class _MapExplorePageState extends State<MapExplorePage> {
     );
   }
 
+  void _shareStory(PlaceModel place) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlogPage(
+          initialCity: place.city,
+          initialCountry: place.country,
+        ),
+      ),
+    );
+  }
+
   void _showLikedSheet(Map<String, dynamic> p) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final txt = isDark ? Colors.white : const Color(0xFF1F2937);
@@ -610,7 +634,31 @@ class _PlaceDetailSheetState extends State<_PlaceDetailSheet> {
           // Place info
           Text(p.name, style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: txt)),
           const SizedBox(height: 4),
-          Text('${p.city}, ${p.country} · ${p.category.replaceAll('_', ' ')}', style: GoogleFonts.inter(fontSize: 13, color: Colors.grey)),
+          Row(
+            children: [
+              Expanded(
+                child: Text('${p.city}, ${p.country} · ${p.category.replaceAll('_', ' ')}',
+                    style: GoogleFonts.inter(fontSize: 13, color: Colors.grey)),
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlogPage(
+                        initialCity: p.city,
+                        initialCountry: p.country,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.edit_note_rounded, size: 20, color: _coral),
+                label: Text('Share Story',
+                    style: GoogleFonts.inter(color: _coral, fontWeight: FontWeight.bold, fontSize: 13)),
+              ),
+            ],
+          ),
           if (p.description != null) ...[const SizedBox(height: 10), Text(p.description!, style: GoogleFonts.inter(fontSize: 13, color: txt, height: 1.4))],
           const SizedBox(height: 20),
 

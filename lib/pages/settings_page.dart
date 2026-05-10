@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import '../services/auth_service.dart';
 import '../main.dart';
 
@@ -14,7 +17,10 @@ class _SettingsPageState extends State<SettingsPage> {
   final AuthService _authService = AuthService();
   bool _notificationsEnabled = true;
   String _displayName = '';
+  String _username = '';
   String _email = '';
+  String _photoUrl = '';
+  bool _isUpdating = false;
 
   static const _accent = Color(0xFFFF6B6B);
   static const _accentLight = Color(0xFFFF8E53);
@@ -43,7 +49,9 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted) {
         setState(() {
           _displayName = fullName.isNotEmpty ? fullName : fallbackName;
+          _username = profile?['username'] ?? '';
           _email = user.email ?? '';
+          _photoUrl = profile?['photoUrl'] ?? '';
         });
       }
     } catch (_) {
@@ -94,17 +102,34 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 60, height: 60,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [_accent, _accentLight]),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
-                        style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
+                  GestureDetector(
+                    onTap: _isUpdating ? null : _pickProfileImage,
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 60, height: 60,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [_accent, _accentLight]),
+                            borderRadius: BorderRadius.circular(18),
+                            image: _photoUrl.isNotEmpty ? DecorationImage(image: NetworkImage(_photoUrl), fit: BoxFit.cover) : null,
+                          ),
+                          child: _photoUrl.isEmpty ? Center(
+                            child: Text(
+                              _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
+                              style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ) : (_isUpdating ? const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : null),
+                        ),
+                        if (!_isUpdating)
+                          Positioned(
+                            right: 0, bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                              child: const Icon(Icons.camera_alt, size: 12, color: _accent),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -114,17 +139,20 @@ class _SettingsPageState extends State<SettingsPage> {
                       children: [
                         Text(_displayName, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
                         const SizedBox(height: 4),
-                        Text(_email, style: GoogleFonts.inter(fontSize: 14, color: secondaryTextColor)),
+                        Text(_username.isNotEmpty ? '@$_username' : _email, style: GoogleFonts.inter(fontSize: 14, color: secondaryTextColor)),
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _accent.withAlpha(15),
-                      borderRadius: BorderRadius.circular(10),
+                  GestureDetector(
+                    onTap: () => _showEditProfileSheet(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _accent.withAlpha(15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.edit_outlined, color: _accent, size: 20),
                     ),
-                    child: const Icon(Icons.edit_outlined, color: _accent, size: 20),
                   ),
                 ],
               ),
@@ -247,6 +275,75 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       title: Text(title, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
       trailing: trailing ?? Icon(Icons.chevron_right, color: secondaryTextColor, size: 20),
+    );
+  }
+
+  Future<void> _pickProfileImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    
+    if (image != null) {
+      setState(() => _isUpdating = true);
+      try {
+        final ref = FirebaseStorage.instance.ref().child('profiles/${_authService.currentUser?.uid}.jpg');
+        await ref.putFile(File(image.path));
+        final url = await ref.getDownloadURL();
+        await _authService.updateProfilePicture(url);
+        setState(() {
+          _photoUrl = url;
+          _isUpdating = false;
+        });
+      } catch (e) {
+        setState(() => _isUpdating = false);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  void _showEditProfileSheet(BuildContext context) {
+    final usernameController = TextEditingController(text: _username);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Edit Username', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: usernameController,
+              decoration: InputDecoration(
+                hintText: 'Username',
+                prefixText: '@',
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: () async {
+                  await _authService.updateUsername(usernameController.text);
+                  setState(() => _username = usernameController.text);
+                  if (mounted) Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: _accent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
     );
   }
 }
