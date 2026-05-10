@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
@@ -49,6 +50,10 @@ class _PlannerPageState extends State<PlannerPage> {
   String? _existingFlightFileUrl;
   final _currencyService = CurrencyService();
   Map<String, double>? _rates;
+
+  // Checklist
+  final List<Map<String, dynamic>> _checklist = [];
+  final _checklistController = TextEditingController();
 
   // Budget categories
   final _flightController = TextEditingController();
@@ -124,6 +129,9 @@ class _PlannerPageState extends State<PlannerPage> {
     }
     for (var p in (d['places'] ?? [])) {
       _places.add({'name': p['name'], 'price': (p['price'] as num?)?.toDouble() ?? 0, 'currency': p['currency'] ?? 'TRY', 'documentUrl': p['documentUrl'], 'documentName': p['documentName']});
+    }
+    for (var item in (d['checklist'] ?? [])) {
+      _checklist.add({'text': item['text'] ?? '', 'done': item['done'] ?? false});
     }
   }
 
@@ -403,6 +411,7 @@ class _PlannerPageState extends State<PlannerPage> {
           },
           'startDate': _startDate != null ? Timestamp.fromDate(_startDate!) : null,
           'endDate': _endDate != null ? Timestamp.fromDate(_endDate!) : null,
+          'checklist': _checklist.map((item) => {'text': item['text'], 'done': item['done']}).toList(),
         };
 
         final tripsRef = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('trips');
@@ -641,6 +650,92 @@ class _PlannerPageState extends State<PlannerPage> {
                             },
                           ),
                         ]
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Checklist
+                  _buildSectionTitle('Checklist', textColor),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _checklistController,
+                                decoration: InputDecoration(
+                                  hintText: 'Add item (e.g. Pack passport)',
+                                  hintStyle: TextStyle(color: textColor.withOpacity(0.4), fontSize: 14),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                  filled: true,
+                                  fillColor: isDarkMode ? Colors.white.withAlpha(8) : Colors.grey.withAlpha(20),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  prefixIcon: const Icon(Icons.checklist_rounded, color: _coral, size: 20),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () {
+                                if (_checklistController.text.trim().isNotEmpty) {
+                                  setState(() {
+                                    _checklist.add({'text': _checklistController.text.trim(), 'done': false});
+                                    _checklistController.clear();
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(color: _coral, borderRadius: BorderRadius.circular(12)),
+                                child: const Icon(Icons.add, color: Colors.white, size: 20),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_checklist.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          ...List.generate(_checklist.length, (i) {
+                            final item = _checklist[i];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => setState(() => item['done'] = !item['done']),
+                                    child: Icon(
+                                      item['done'] ? Icons.check_circle_rounded : Icons.circle_outlined,
+                                      color: item['done'] ? const Color(0xFF2ECC71) : Colors.grey,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      item['text'],
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: item['done'] ? Colors.grey : textColor,
+                                        decoration: item['done'] ? TextDecoration.lineThrough : null,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => setState(() => _checklist.removeAt(i)),
+                                    child: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
                       ],
                     ),
                   ),

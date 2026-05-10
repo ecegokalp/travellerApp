@@ -19,6 +19,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   String _displayName = '';
+  String _photoUrl = '';
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<dynamic>> _events = {};
@@ -52,6 +53,7 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           _displayName = fullName.isNotEmpty ? fullName : fallbackName;
+          _photoUrl = profile?['photoUrl'] ?? '';
         });
       }
     } catch (_) {
@@ -133,7 +135,10 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   // Avatar leading to Settings
                   GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage())),
+                    onTap: () async {
+                      await Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
+                      _loadUserData();
+                    },
                     child: Container(
                       width: 48, height: 48,
                       decoration: BoxDecoration(
@@ -142,13 +147,18 @@ class _HomePageState extends State<HomePage> {
                         boxShadow: [
                           BoxShadow(color: _accent.withAlpha(40), blurRadius: 10, offset: const Offset(0, 4)),
                         ],
+                        image: _photoUrl.isNotEmpty
+                            ? DecorationImage(image: NetworkImage(_photoUrl), fit: BoxFit.cover)
+                            : null,
                       ),
-                      child: Center(
-                        child: Text(
-                          _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
-                          style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
-                        ),
-                      ),
+                      child: _photoUrl.isEmpty
+                          ? Center(
+                              child: Text(
+                                _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'T',
+                                style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 14),

@@ -223,7 +223,33 @@ class _BlogPageState extends State<BlogPage> with SingleTickerProviderStateMixin
                   )
                 : const Icon(Icons.more_horiz),
           ),
-          if (blog['imageUrl'] != null)
+          if (blog['imageUrls'] != null && (blog['imageUrls'] as List).length > 1)
+            SizedBox(
+              height: 250,
+              child: PageView.builder(
+                itemCount: (blog['imageUrls'] as List).length,
+                itemBuilder: (_, i) => Stack(
+                  children: [
+                    Image.network(
+                      blog['imageUrls'][i], height: 250, width: double.infinity, fit: BoxFit.cover,
+                      errorBuilder: (_, e, s) => Container(
+                        height: 250, color: isDark ? Colors.grey[800] : Colors.grey[200],
+                        child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8, right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
+                        child: Text('${i + 1}/${(blog['imageUrls'] as List).length}', style: GoogleFonts.inter(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (blog['imageUrl'] != null)
             ClipRRect(
               child: Image.network(blog['imageUrl'], height: 250, width: double.infinity, fit: BoxFit.cover,
                 errorBuilder: (_, e, s) => Container(
@@ -532,7 +558,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
   final _countryController = TextEditingController();
   final GeminiService _geminiService = GeminiService();
   final AuthService _authService = AuthService();
-  File? _image;
+  final List<File> _images = [];
   bool _loading = false;
 
   static const _accent = Color(0xFFFF6B6B);
@@ -681,44 +707,62 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
   }
 
   Widget _buildImagePicker(bool isDark) {
-    return GestureDetector(
-      onTap: () async {
-        final img = await ImagePicker().pickImage(source: ImageSource.gallery);
-        if (img != null && mounted) setState(() => _image = File(img.path));
-      },
-      child: Container(
-        height: 150,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withAlpha(8) : Colors.grey[200],
-          borderRadius: BorderRadius.circular(20),
-          border: _image == null ? Border.all(color: Colors.grey.withAlpha(40), width: 1.5) : null,
-        ),
-        child: _image != null
-            ? Stack(
+    return SizedBox(
+      height: 120,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          ..._images.asMap().entries.map((entry) {
+            final i = entry.key;
+            final file = entry.value;
+            return Container(
+              width: 120, height: 120,
+              margin: const EdgeInsets.only(right: 12),
+              child: Stack(
                 children: [
-                  ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.file(_image!, fit: BoxFit.cover, width: double.infinity, height: double.infinity)),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(file, fit: BoxFit.cover, width: 120, height: 120),
+                  ),
                   Positioned(
-                    top: 8, right: 8,
+                    top: 4, right: 4,
                     child: GestureDetector(
-                      onTap: () => setState(() => _image = null),
+                      onTap: () => setState(() => _images.removeAt(i)),
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                        child: const Icon(Icons.close, color: Colors.white, size: 18),
+                        child: const Icon(Icons.close, color: Colors.white, size: 14),
                       ),
                     ),
                   ),
                 ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_a_photo_rounded, size: 36, color: Colors.grey.withAlpha(150)),
-                  const SizedBox(height: 8),
-                  Text('Add Photo', style: GoogleFonts.inter(fontSize: 13, color: Colors.grey)),
-                ],
               ),
+            );
+          }),
+          if (_images.length < 5)
+            GestureDetector(
+              onTap: () async {
+                final img = await ImagePicker().pickImage(source: ImageSource.gallery);
+                if (img != null && mounted) setState(() => _images.add(File(img.path)));
+              },
+              child: Container(
+                width: 120, height: 120,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withAlpha(8) : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.withAlpha(40), width: 1.5),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_a_photo_rounded, size: 28, color: Colors.grey.withAlpha(150)),
+                    const SizedBox(height: 4),
+                    Text('${_images.length}/5', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey)),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -757,11 +801,12 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
       final user = _authService.currentUser;
       if (user == null) throw Exception('Not logged in');
 
-      String? url;
-      if (_image != null) {
-        final ref = FirebaseStorage.instance.ref().child('user_blogs/${user.uid}/${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await ref.putFile(_image!);
-        url = await ref.getDownloadURL();
+      // Upload all images
+      List<String> imageUrls = [];
+      for (int i = 0; i < _images.length; i++) {
+        final ref = FirebaseStorage.instance.ref().child('user_blogs/${user.uid}/${DateTime.now().millisecondsSinceEpoch}_$i.jpg');
+        await ref.putFile(_images[i]);
+        imageUrls.add(await ref.getDownloadURL());
       }
 
       // Get user profile for fullName
@@ -774,7 +819,8 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
         'authorName': authorName,
         'authorPhotoUrl': authorPhoto,
         'content': content,
-        'imageUrl': url,
+        'imageUrl': imageUrls.isNotEmpty ? imageUrls.first : null,
+        'imageUrls': imageUrls,
         'city': city,
         'country': country,
         'createdAt': FieldValue.serverTimestamp(),

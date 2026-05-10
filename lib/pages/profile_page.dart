@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import 'user_list_page.dart';
 import 'settings_page.dart';
+import 'saved_stories_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final String? userId;
@@ -104,13 +105,20 @@ class _ProfilePageState extends State<ProfilePage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (_isMe)
+          if (_isMe) ...[
+            IconButton(
+              icon: Icon(Icons.bookmark_rounded, color: textColor),
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedStoriesPage()));
+              },
+            ),
             IconButton(
               icon: Icon(Icons.settings_outlined, color: textColor),
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
               },
             ),
+          ],
         ],
       ),
       body: SingleChildScrollView(

@@ -86,6 +86,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     final budgetLimitCurrency = d['budgetLimitCurrency'] ?? 'TRY';
     final budgetLimit = _rates != null ? _currencyService.convertToTRY(budgetLimitRaw, budgetLimitCurrency, _rates!) : budgetLimitRaw;
     final List<dynamic> places = d['places'] ?? [];
+    final List<dynamic> checklist = d['checklist'] ?? [];
     final budgetCats = d['budgetCategories'] as Map<String, dynamic>?;
     final hasStart = d['startDate'] != null;
     final hasEnd = d['endDate'] != null;
@@ -249,6 +250,45 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                   ),
                 );
               }),
+            ],
+
+            // ── Checklist ──
+            if (checklist.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              _section('Checklist', Icons.checklist_rounded, textColor),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 10)]),
+                child: Column(
+                  children: checklist.map((item) {
+                    final done = item['done'] ?? false;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(
+                            done ? Icons.check_circle_rounded : Icons.circle_outlined,
+                            color: done ? const Color(0xFF2ECC71) : Colors.grey,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              item['text'] ?? '',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: done ? Colors.grey : textColor,
+                                decoration: done ? TextDecoration.lineThrough : null,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
             ],
             const SizedBox(height: 40),
           ],
