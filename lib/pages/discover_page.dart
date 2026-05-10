@@ -141,8 +141,8 @@ class _DiscoverPageState extends State<DiscoverPage> {
                   SizedBox(
                     height: 100,
                     child: FutureBuilder<List<Map<String, dynamic>>>(
-                      future: _searchController.text.isEmpty 
-                          ? _authService.getSuggestedUsers() 
+                      future: _searchController.text.isEmpty
+                          ? _authService.getSuggestedUsers()
                           : Future.value(_foundUsers),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
@@ -165,7 +165,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
                                       radius: 30,
                                       backgroundColor: _accent.withAlpha(30),
                                       backgroundImage: (user['photoUrl'] ?? '').isNotEmpty ? NetworkImage(user['photoUrl']) : null,
-                                      child: (user['photoUrl'] ?? '').isEmpty 
+                                      child: (user['photoUrl'] ?? '').isEmpty
                                           ? Text(user['fullName']?[0].toUpperCase() ?? 'U', style: const TextStyle(color: _accent, fontWeight: FontWeight.bold))
                                           : null,
                                     ),

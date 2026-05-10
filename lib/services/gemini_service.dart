@@ -5,13 +5,13 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSyCJUw4lfoUQwZjl0Y74_raDTww1OxzLM6A';
-  
+  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
+
   late final GenerativeModel _model;
 
   GeminiService() {
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       apiKey: _apiKey,
       safetySettings: [
         SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
@@ -20,6 +20,16 @@ class GeminiService {
         SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
       ],
     );
+  }
+
+  static String _mimeTypeFromExtension(String ext) {
+    switch (ext) {
+      case '.pdf': return 'application/pdf';
+      case '.png': return 'image/png';
+      case '.gif': return 'image/gif';
+      case '.webp': return 'image/webp';
+      default: return 'image/jpeg';
+    }
   }
 
   Future<String?> generateBlogContent(String country, String city) async {
@@ -32,10 +42,12 @@ class GeminiService {
       ];
 
       final response = await _model.generateContent(content);
-      return response.text;
+      final text = response.text;
+      if (text == null || text.trim().isEmpty) return null;
+      return text;
     } catch (e) {
       debugPrint('!!! GEMINI BLOG ERROR: $e');
-      return 'AI generation failed. Please try again later. Error: $e';
+      return null;
     }
   }
 
@@ -43,12 +55,16 @@ class GeminiService {
     try {
       final bytes = await file.readAsBytes();
       final extension = p.extension(file.path).toLowerCase();
-      String mimeType = (extension == '.pdf') ? 'application/pdf' : 'image/jpeg';
+      final mimeType = _mimeTypeFromExtension(extension);
 
       final content = [
         Content.multi([
           DataPart(mimeType, bytes),
-          TextPart('Extract trip details from this document to JSON format.'),
+          TextPart(
+            'Extract trip details from this document and return ONLY a JSON object with these fields: '
+            '"name", "price", "currency", "city", "country", "startDate" (YYYY-MM-DD), "endDate" (YYYY-MM-DD). '
+            'If a field is not found, omit it.',
+          ),
         ]),
       ];
 

@@ -410,6 +410,81 @@ class AuthService {
         .snapshots();
   }
 
+  // --- Blog Edit/Delete Feature ---
+
+  Future<void> deleteBlog(String blogId) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return;
+
+    await _firestore
+        .collection('users')
+        .doc(myUid)
+        .collection('blogs')
+        .doc(blogId)
+        .delete();
+  }
+
+  Future<void> updateBlog(String blogId, Map<String, dynamic> data) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return;
+
+    await _firestore
+        .collection('users')
+        .doc(myUid)
+        .collection('blogs')
+        .doc(blogId)
+        .update(data);
+  }
+
+  // --- Blog Save/Bookmark Feature ---
+
+  Future<void> saveBlog(String authorId, String blogId, Map<String, dynamic> blogData) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return;
+
+    await _firestore
+        .collection('users')
+        .doc(myUid)
+        .collection('saved_blogs')
+        .doc('${authorId}_$blogId')
+        .set({
+      'authorId': authorId,
+      'blogId': blogId,
+      'authorName': blogData['authorName'] ?? '',
+      'authorPhotoUrl': blogData['authorPhotoUrl'] ?? '',
+      'content': blogData['content'] ?? '',
+      'imageUrl': blogData['imageUrl'],
+      'city': blogData['city'] ?? '',
+      'country': blogData['country'] ?? '',
+      'savedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> unsaveBlog(String authorId, String blogId) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return;
+
+    await _firestore
+        .collection('users')
+        .doc(myUid)
+        .collection('saved_blogs')
+        .doc('${authorId}_$blogId')
+        .delete();
+  }
+
+  Stream<bool> isBlogSaved(String authorId, String blogId) {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return Stream.value(false);
+
+    return _firestore
+        .collection('users')
+        .doc(myUid)
+        .collection('saved_blogs')
+        .doc('${authorId}_$blogId')
+        .snapshots()
+        .map((snap) => snap.exists);
+  }
+
   Future<void> updateProfilePicture(String url) async {
     final user = currentUser;
     if (user == null) return;
