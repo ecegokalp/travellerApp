@@ -116,7 +116,10 @@ class _MapExplorePageState extends State<MapExplorePage> {
     });
     _mapController.move(LatLng(city.centerLat, city.centerLng), 13.0);
     final places = await _placeService.getPlacesForCity(city);
-    if (mounted) setState(() { _allPlaces = places; _filtered = places; _loading = false; });
+    if (mounted) {
+      setState(() { _allPlaces = places; _filtered = places; _loading = false; });
+      _focusCurrentCard();
+    }
   }
 
   void _applyFilter(String f) {
@@ -126,6 +129,7 @@ class _MapExplorePageState extends State<MapExplorePage> {
       _showSwiper = true;
       _filtered = f == 'All' ? List.from(_allPlaces) : _allPlaces.where((p) => _filterCats[f]!.contains(p.category)).toList();
     });
+    _focusCurrentCard();
   }
 
   void _onSwipe(int prev, int? cur, CardSwiperDirection dir) {
@@ -158,6 +162,23 @@ class _MapExplorePageState extends State<MapExplorePage> {
       });
     }
     setState(() => _cardIdx = cur ?? _filtered.length);
+    _focusCurrentCard();
+  }
+
+  void _focusCurrentCard() {
+    if (_cardIdx < _filtered.length) {
+      final place = _filtered[_cardIdx];
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          const targetZoom = 16.0;
+          // At zoom 16, roughly 0.005 degree offset pushes marker above cards
+          _mapController.move(
+            LatLng(place.latitude + 0.003, place.longitude),
+            targetZoom,
+          );
+        }
+      });
+    }
   }
 
   @override
