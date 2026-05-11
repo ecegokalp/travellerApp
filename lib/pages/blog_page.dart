@@ -269,15 +269,17 @@ class _BlogPageState extends State<BlogPage> with SingleTickerProviderStateMixin
                 Row(
                   children: [
                     // Like button
-                    StreamBuilder<bool>(
-                      stream: _authService.isLiked(authorId, blogId),
+                    FutureBuilder<bool>(
+                      future: _authService.isLikedOnce(authorId, blogId),
                       builder: (context, snapshot) {
                         final isLiked = snapshot.data ?? false;
                         return _socialAction(
                           isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                           likeCount.toString(),
                           color: isLiked ? _accent : _warmGray,
-                          onTap: () => _authService.toggleLike(authorId, blogId),
+                          onTap: () => _authService.toggleLike(authorId, blogId).then((_) {
+                            if (mounted) setState(() {});
+                          }),
                         );
                       },
                     ),
@@ -297,12 +299,15 @@ class _BlogPageState extends State<BlogPage> with SingleTickerProviderStateMixin
                     ),
                     const Spacer(),
                     // Bookmark button
-                    StreamBuilder<bool>(
-                      stream: _authService.isBlogSaved(authorId, blogId),
+                    FutureBuilder<bool>(
+                      future: _authService.isBlogSavedOnce(authorId, blogId),
                       builder: (context, snapshot) {
                         final isSaved = snapshot.data ?? false;
                         return GestureDetector(
-                          onTap: () => _toggleBookmark(authorId, blogId, blog, isSaved),
+                          onTap: () {
+                            _toggleBookmark(authorId, blogId, blog, isSaved);
+                            if (mounted) setState(() {});
+                          },
                           child: Icon(
                             isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                             color: isSaved ? _accent : _warmGray,

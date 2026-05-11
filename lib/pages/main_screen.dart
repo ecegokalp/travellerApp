@@ -17,14 +17,18 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  static const _pages = <Widget>[
-    HomePage(),
-    DiscoverPage(),
-    MapExplorePage(),
-    BlogPage(),
-    DocumentsPage(),
-    ProfilePage(),
-  ];
+  // Lazy page builder – only the active page lives in memory.
+  Widget _buildPage(int index) {
+    switch (index) {
+      case 0: return const HomePage();
+      case 1: return const DiscoverPage();
+      case 2: return const MapExplorePage();
+      case 3: return const BlogPage();
+      case 4: return const DocumentsPage();
+      case 5: return const ProfilePage();
+      default: return const HomePage();
+    }
+  }
 
   static const _sunset = Color(0xFFFF6B6B);
 
@@ -43,7 +47,7 @@ class _MainScreenState extends State<MainScreen> {
     final inactiveColor = isDark ? Colors.white38 : const Color(0xFF9CA3AF);
 
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: _buildPage(_currentIndex),
       extendBody: true,
       bottomNavigationBar: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),

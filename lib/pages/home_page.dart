@@ -449,11 +449,14 @@ class _HomePageState extends State<HomePage> {
               DateTime current = DateTime(startDate.year, startDate.month, startDate.day);
               DateTime last = DateTime(endDate.year, endDate.month, endDate.day);
 
-              while (current.isBefore(last) || current.isAtSameMomentAs(last)) {
+              // Cap at 365 days to prevent infinite/huge loops
+              int safety = 0;
+              while ((current.isBefore(last) || current.isAtSameMomentAs(last)) && safety < 365) {
                 final dayKey = DateTime(current.year, current.month, current.day);
                 if (_events[dayKey] == null) _events[dayKey] = [];
                 _events[dayKey]!.add(city);
                 current = current.add(const Duration(days: 1));
+                safety++;
               }
             } else if (startDate != null) {
               final dayKey = DateTime(startDate.year, startDate.month, startDate.day);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,6 +17,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
+  StreamSubscription? _followingSub;
   String _displayName = '';
   String _username = '';
   String _photoUrl = '';
@@ -39,6 +41,12 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfileData();
   }
 
+  @override
+  void dispose() {
+    _followingSub?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadProfileData() async {
     if (_effectiveUserId.isEmpty) return;
 
@@ -56,7 +64,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     if (!_isMe) {
-      _authService.isFollowing(_effectiveUserId).listen((isFollowing) {
+      _followingSub?.cancel();
+      _followingSub = _authService.isFollowing(_effectiveUserId).listen((isFollowing) {
         if (mounted) {
           setState(() {
             _isFollowing = isFollowing;

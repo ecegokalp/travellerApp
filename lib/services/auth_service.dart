@@ -375,6 +375,21 @@ class AuthService {
         .map((snap) => snap.exists);
   }
 
+  Future<bool> isLikedOnce(String authorId, String blogId) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return false;
+
+    final snap = await _firestore
+        .collection('users')
+        .doc(authorId)
+        .collection('blogs')
+        .doc(blogId)
+        .collection('likes')
+        .doc(myUid)
+        .get();
+    return snap.exists;
+  }
+
   Future<void> addComment(String authorId, String blogId, String text) async {
     final myUid = currentUser?.uid;
     if (myUid == null || text.trim().isEmpty) return;
@@ -483,6 +498,19 @@ class AuthService {
         .doc('${authorId}_$blogId')
         .snapshots()
         .map((snap) => snap.exists);
+  }
+
+  Future<bool> isBlogSavedOnce(String authorId, String blogId) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null) return false;
+
+    final snap = await _firestore
+        .collection('users')
+        .doc(myUid)
+        .collection('saved_blogs')
+        .doc('${authorId}_$blogId')
+        .get();
+    return snap.exists;
   }
 
   Future<void> updateProfilePicture(String url) async {
