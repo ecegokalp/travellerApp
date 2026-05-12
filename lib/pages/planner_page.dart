@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
-import '../services/gemini_service.dart';
 
 class PlannerPage extends StatefulWidget {
   final Map<String, dynamic>? existingTrip;
@@ -20,7 +19,6 @@ class PlannerPage extends StatefulWidget {
 
 class _PlannerPageState extends State<PlannerPage> {
   final AuthService _authService = AuthService();
-  final GeminiService _geminiService = GeminiService();
   final _formKey = GlobalKey<FormState>();
   
   final _cityController = TextEditingController();
@@ -171,7 +169,6 @@ class _PlannerPageState extends State<PlannerPage> {
     );
     if (result != null) {
       setState(() => _pickedHotelFile = result.files.first);
-      _processDocumentWithAI(result.files.first, type: 'hotel');
     }
   }
 
@@ -182,7 +179,6 @@ class _PlannerPageState extends State<PlannerPage> {
     );
     if (result != null) {
       setState(() => _pickedFlightFile = result.files.first);
-      _processDocumentWithAI(result.files.first, type: 'flight');
     }
   }
 
@@ -193,122 +189,21 @@ class _PlannerPageState extends State<PlannerPage> {
     );
     if (result != null) {
       setState(() => _pickedPlaceFile = result.files.first);
-      _processDocumentWithAI(result.files.first, type: 'place');
     }
   }
 
-  DateTime? _parseDate(dynamic dateValue) {
-    if (dateValue == null) return null;
-    String dateStr = dateValue.toString();
-    try {
-      // Standart format: 2024-05-15
-      return DateTime.parse(dateStr);
-    } catch (_) {
-      try {
-        // Alternatif: 15.05.2024 veya 15/05/2024
-        List<String> parts = dateStr.split(RegExp(r'[\.\/-]'));
-        if (parts.length == 3) {
-          if (parts[0].length == 4) { // YYYY-MM-DD
-            return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-          } else { // DD-MM-YYYY
-            return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
-          }
-        }
-      } catch (_) {}
-    }
-    return null;
-  }
-
-  Future<void> _processDocumentWithAI(PlatformFile pickedFile, {required String type}) async {
-    if (pickedFile.path == null) return;
-
-    setState(() {
-      _isUploading = true;
-      _loadingMessage = 'AI is analyzing your ${type == 'place' ? 'booking' : type}...';
+  Future<void> _syncToPersonalDocuments(String userId, String fileName, String url, int size) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('personal_documents')
+        .add({
+      'name': fileName,
+      'url': url,
+      'createdAt': FieldValue.serverTimestamp(),
+      'type': 'general',
+      'size': size,
     });
-    
-    try {
-      final file = File(pickedFile.path!);
-      final data = await _geminiService.processDocument(file);
-
-      if (data != null && mounted) {
-        setState(() {
-          // General Info
-          if (data['city'] != null && _cityController.text.isEmpty) {
-            _cityController.text = data['city'].toString();
-          }
-          if (data['country'] != null && _countryController.text.isEmpty) {
-            _countryController.text = data['country'].toString();
-          }
-
-          if (type == 'place') {
-            if (data['name'] != null) _placeNameController.text = data['name'].toString();
-            if (data['price'] != null) _placePriceController.text = data['price'].toString();
-            if (data['currency'] != null) {
-              String cur = data['currency'].toString().toUpperCase();
-              if (CurrencyService.supportedCurrencies.contains(cur)) {
-                _placeCurrency = cur;
-              }
-            }
-          } else if (type == 'hotel') {
-            if (data['name'] != null) _hotelNameController.text = data['name'].toString();
-            if (data['price'] != null) _hotelPriceController.text = data['price'].toString();
-            if (data['currency'] != null) {
-              String cur = data['currency'].toString().toUpperCase();
-              if (CurrencyService.supportedCurrencies.contains(cur)) {
-                _hotelCurrency = cur;
-              }
-            }
-          } else if (type == 'flight') {
-            if (data['price'] != null) _flightController.text = data['price'].toString();
-            if (data['currency'] != null) {
-              String cur = data['currency'].toString().toUpperCase();
-              if (CurrencyService.supportedCurrencies.contains(cur)) {
-                _flightCurrency = cur;
-              }
-            }
-          }
-
-          // Dates logic: Expand the trip range based on document dates
-          DateTime? aiStart = _parseDate(data['startDate']);
-          DateTime? aiEnd = _parseDate(data['endDate']);
-
-          if (aiStart != null) {
-            if (_startDate == null || aiStart.isBefore(_startDate!)) _startDate = aiStart;
-            if (_endDate == null || aiStart.isAfter(_endDate!)) _endDate = aiStart;
-          }
-          if (aiEnd != null) {
-            if (_startDate == null || aiEnd.isBefore(_startDate!)) _startDate = aiEnd;
-            if (_endDate == null || aiEnd.isAfter(_endDate!)) _endDate = aiEnd;
-          }
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('AI extracted ${type == 'flight' ? 'flight' : type} details and dates!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('AI could not extract data from this document. Please enter details manually.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('AI Processing error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('AI Processing failed: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isUploading = false);
-    }
   }
 
   Future<String?> _uploadFile(PlatformFile pickedFile, String userId, String subFolder) async {
@@ -359,12 +254,18 @@ class _PlannerPageState extends State<PlannerPage> {
         String? hotelFileUrl = _existingHotelFileUrl;
         if (_pickedHotelFile != null) {
           hotelFileUrl = await _uploadFile(_pickedHotelFile!, user.uid, 'hotel_documents');
+          if (hotelFileUrl != null) {
+            await _syncToPersonalDocuments(user.uid, _pickedHotelFile!.name, hotelFileUrl, _pickedHotelFile!.size);
+          }
         }
 
         // Upload Flight Doc
         String? flightFileUrl = _existingFlightFileUrl;
         if (_pickedFlightFile != null) {
           flightFileUrl = await _uploadFile(_pickedFlightFile!, user.uid, 'flight_documents');
+          if (flightFileUrl != null) {
+            await _syncToPersonalDocuments(user.uid, _pickedFlightFile!.name, flightFileUrl, _pickedFlightFile!.size);
+          }
         }
 
         // Upload Place Docs
@@ -377,6 +278,9 @@ class _PlannerPageState extends State<PlannerPage> {
             PlatformFile pf = place['tempFile'];
             placeFileUrl = await _uploadFile(pf, user.uid, 'place_documents');
             fileName = pf.name;
+            if (placeFileUrl != null) {
+              await _syncToPersonalDocuments(user.uid, pf.name, placeFileUrl, pf.size);
+            }
           }
           
           finalPlaces.add({

@@ -454,14 +454,28 @@ class _HomePageState extends State<HomePage> {
               while ((current.isBefore(last) || current.isAtSameMomentAs(last)) && safety < 365) {
                 final dayKey = DateTime(current.year, current.month, current.day);
                 if (_events[dayKey] == null) _events[dayKey] = [];
-                _events[dayKey]!.add(city);
+                _events[dayKey]!.add({
+                  'city': city,
+                  'country': data['country'] ?? '',
+                  'hotel': data['hotelName'] ?? '',
+                  'budget': data['totalBudgetTRY'] ?? 0,
+                  'id': doc.id,
+                  'data': data,
+                });
                 current = current.add(const Duration(days: 1));
                 safety++;
               }
             } else if (startDate != null) {
               final dayKey = DateTime(startDate.year, startDate.month, startDate.day);
               if (_events[dayKey] == null) _events[dayKey] = [];
-              _events[dayKey]!.add(city);
+              _events[dayKey]!.add({
+                'city': city,
+                'country': data['country'] ?? '',
+                'hotel': data['hotelName'] ?? '',
+                'budget': data['totalBudgetTRY'] ?? 0,
+                'id': doc.id,
+                'data': data,
+              });
             }
           }
         }
@@ -525,6 +539,50 @@ class _HomePageState extends State<HomePage> {
                   weekendStyle: GoogleFonts.inter(color: secondaryTextColor.withAlpha(150), fontWeight: FontWeight.w600, fontSize: 12),
                 ),
               ),
+              if (_selectedDay != null && _events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] != null)
+                ...(_events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!).map((event) {
+                  final e = event as Map<String, dynamic>;
+                  return Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _accent.withAlpha(10),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _accent.withAlpha(30)),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => TripDetailsPage(tripData: e['data'], tripId: e['id']),
+                        ));
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 16, color: _accent),
+                              const SizedBox(width: 4),
+                              Text('${e['city']}, ${e['country']}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: textColor)),
+                              const Spacer(),
+                              Text('${e['budget'].toStringAsFixed(0)} ₺', style: GoogleFonts.inter(color: _accent, fontWeight: FontWeight.bold, fontSize: 12)),
+                            ],
+                          ),
+                          if (e['hotel'].isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.hotel, size: 14, color: Colors.blue),
+                                const SizedBox(width: 4),
+                                Text(e['hotel'], style: GoogleFonts.inter(fontSize: 12, color: secondaryTextColor)),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }),
             ],
           ),
         );
