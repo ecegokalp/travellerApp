@@ -24,6 +24,9 @@ class _DiscoverPageState extends State<DiscoverPage> {
   bool _isSearchingUsers = false;
   final TextEditingController _searchController = TextEditingController();
 
+  // Cache suggested users so FutureBuilder doesn't re-fetch on every rebuild
+  Future<List<Map<String, dynamic>>>? _suggestedUsersFuture;
+
   final List<Map<String, dynamic>> categories = [
     {'name': 'All', 'icon': Icons.apps_rounded},
     {'name': 'Cities', 'icon': Icons.location_city_rounded},
@@ -142,7 +145,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
                     height: 100,
                     child: FutureBuilder<List<Map<String, dynamic>>>(
                       future: _searchController.text.isEmpty
-                          ? _authService.getSuggestedUsers()
+                          ? (_suggestedUsersFuture ??= _authService.getSuggestedUsers())
                           : Future.value(_foundUsers),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());

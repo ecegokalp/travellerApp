@@ -23,6 +23,10 @@ class _BlogPageState extends State<BlogPage> with SingleTickerProviderStateMixin
   final AuthService _authService = AuthService();
   late TabController _tabController;
 
+  // Cache like/bookmark states to prevent repeated Firestore calls on every rebuild
+  final Map<String, bool> _likeCache = {};
+  final Map<String, bool> _bookmarkCache = {};
+
   static const _accent = Color(0xFFFF6B6B);
   static const _darkText = Color(0xFF1F2937);
   static const _warmGray = Color(0xFF6B7280);
@@ -266,62 +270,71 @@ class _BlogPageState extends State<BlogPage> with SingleTickerProviderStateMixin
               children: [
                 Text(blog['content'] ?? '', style: GoogleFonts.inter(fontSize: 14, height: 1.5, color: isDark ? Colors.white70 : _darkText)),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    // Like button
-                    FutureBuilder<bool>(
-                      future: _authService.isLikedOnce(authorId, blogId),
-                      builder: (context, snapshot) {
-                        final isLiked = snapshot.data ?? false;
-                        return _socialAction(
-                          isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                          likeCount.toString(),
-                          color: isLiked ? _accent : _warmGray,
-                          onTap: () => _authService.toggleLike(authorId, blogId).then((_) {
-                            if (mounted) setState(() {});
-                          }),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 16),
-                    // Comment button
-                    _socialAction(
-                      Icons.chat_bubble_outline_rounded,
-                      commentCount.toString(),
-                      onTap: () => _showCommentsSheet(authorId, blogId),
-                    ),
-                    const SizedBox(width: 16),
-                    // Share button
-                    _socialAction(
-                      Icons.send_rounded,
-                      '',
-                      onTap: () => _shareBlog(blog),
-                    ),
-                    const Spacer(),
-                    // Bookmark button
-                    FutureBuilder<bool>(
-                      future: _authService.isBlogSavedOnce(authorId, blogId),
-                      builder: (context, snapshot) {
-                        final isSaved = snapshot.data ?? false;
-                        return GestureDetector(
-                          onTap: () {
-                            _toggleBookmark(authorId, blogId, blog, isSaved);
-                            if (mounted) setState(() {});
-                          },
-                          child: Icon(
-                            isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                            color: isSaved ? _accent : _warmGray,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                _buildSocialRow(authorId, blogId, blog, likeCount, commentCount),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSocialRow(String authorId, String blogId, Map<String, dynamic> blog, int likeCount, int commentCount) {
+    final likeKey = '${authorId}_$blogId';
+    final bookmarkKey = '${authorId}_$blogId';
+
+    // Load like/bookmark state only once per blog, not on every rebuild
+    if (!_likeCache.containsKey(likeKey)) {
+      _authService.isLikedOnce(authorId, blogId).then((val) {
+        if (mounted) setState(() => _likeCache[likeKey] = val);
+      });
+    }
+    if (!_bookmarkCache.containsKey(bookmarkKey)) {
+      _authService.isBlogSavedOnce(authorId, blogId).then((val) {
+        if (mounted) setState(() => _bookmarkCache[bookmarkKey] = val);
+      });
+    }
+
+    final isLiked = _likeCache[likeKey] ?? false;
+    final isSaved = _bookmarkCache[bookmarkKey] ?? false;
+
+    return Row(
+      children: [
+        _socialAction(
+          isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          likeCount.toString(),
+          color: isLiked ? _accent : _warmGray,
+          onTap: () {
+            _likeCache[likeKey] = !isLiked;
+            _authService.toggleLike(authorId, blogId);
+            if (mounted) setState(() {});
+          },
+        ),
+        const SizedBox(width: 16),
+        _socialAction(
+          Icons.chat_bubble_outline_rounded,
+          commentCount.toString(),
+          onTap: () => _showCommentsSheet(authorId, blogId),
+        ),
+        const SizedBox(width: 16),
+        _socialAction(
+          Icons.send_rounded,
+          '',
+          onTap: () => _shareBlog(blog),
+        ),
+        const Spacer(),
+        GestureDetector(
+          onTap: () {
+            _bookmarkCache[bookmarkKey] = !isSaved;
+            _toggleBookmark(authorId, blogId, blog, isSaved);
+            if (mounted) setState(() {});
+          },
+          child: Icon(
+            isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+            color: isSaved ? _accent : _warmGray,
+          ),
+        ),
+      ],
     );
   }
 

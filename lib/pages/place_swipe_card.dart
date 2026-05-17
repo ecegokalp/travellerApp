@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/place_model.dart';
 
-class PlaceSwipeCard extends StatelessWidget {
+class PlaceSwipeCard extends StatefulWidget {
   final PlaceModel place;
   const PlaceSwipeCard({super.key, required this.place});
+
+  @override
+  State<PlaceSwipeCard> createState() => _PlaceSwipeCardState();
+}
+
+class _PlaceSwipeCardState extends State<PlaceSwipeCard> {
+  bool _showAerial = false;
 
   static const _coral = Color(0xFFFF6B6B);
 
   @override
   Widget build(BuildContext context) {
+    final place = widget.place;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
@@ -23,30 +33,51 @@ class PlaceSwipeCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Photo
-            CachedNetworkImage(
-              imageUrl: place.displayImage,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => _gradient(),
-              errorWidget: (_, __, ___) => _gradient(),
-            ),
+            // Photo or Aerial view
+            if (_showAerial)
+              _aerialView(place)
+            else
+              CachedNetworkImage(
+                imageUrl: place.displayImage,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => _gradient(place),
+                errorWidget: (_, __, ___) => _gradient(place),
+              ),
 
             // Dark gradient overlay
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.35, 0.6, 1.0],
-                  colors: [
-                    Colors.black.withAlpha(20),
-                    Colors.transparent,
-                    Colors.black.withAlpha(60),
-                    Colors.black.withAlpha(210),
-                  ],
+            if (!_showAerial)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.35, 0.6, 1.0],
+                    colors: [
+                      Colors.black.withAlpha(20),
+                      Colors.transparent,
+                      Colors.black.withAlpha(60),
+                      Colors.black.withAlpha(210),
+                    ],
+                  ),
                 ),
               ),
-            ),
+
+            // Aerial view overlay gradient (lighter, for readability)
+            if (_showAerial)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.6, 1.0],
+                    colors: [
+                      Colors.black.withAlpha(10),
+                      Colors.black.withAlpha(40),
+                      Colors.black.withAlpha(180),
+                    ],
+                  ),
+                ),
+              ),
 
             // Top badges
             Positioned(
@@ -60,6 +91,32 @@ class PlaceSwipeCard extends StatelessWidget {
                   if (place.effectiveRating > 0)
                     _badge('⭐ ${place.ratingLabel}'),
                 ],
+              ),
+            ),
+
+            // Aerial view toggle button
+            Positioned(
+              top: 14,
+              right: place.effectiveRating > 0 ? 14 : 14,
+              bottom: null,
+              child: Padding(
+                padding: EdgeInsets.only(top: place.effectiveRating > 0 ? 38 : 0),
+                child: GestureDetector(
+                  onTap: () => setState(() => _showAerial = !_showAerial),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _showAerial ? _coral : Colors.black.withAlpha(50),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withAlpha(60)),
+                    ),
+                    child: Icon(
+                      _showAerial ? Icons.photo_rounded : Icons.satellite_alt_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
               ),
             ),
 
@@ -97,7 +154,7 @@ class PlaceSwipeCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (place.description != null) ...[
+                  if (place.description != null && !_showAerial) ...[
                     const SizedBox(height: 6),
                     Text(
                       place.description!,
@@ -106,11 +163,68 @@ class PlaceSwipeCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
+                  if (_showAerial) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(80),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.satellite_alt_rounded, color: Colors.white70, size: 12),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Aerial View',
+                            style: GoogleFonts.inter(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _aerialView(PlaceModel place) {
+    return IgnorePointer(
+      child: FlutterMap(
+        options: MapOptions(
+          initialCenter: LatLng(place.latitude, place.longitude),
+          initialZoom: 17,
+          interactionOptions: const InteractionOptions(
+            flags: InteractiveFlag.none,
+          ),
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            userAgentPackageName: 'com.example.traveller_app',
+          ),
+          MarkerLayer(markers: [
+            Marker(
+              point: LatLng(place.latitude, place.longitude),
+              width: 28,
+              height: 28,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _coral,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2.5),
+                  boxShadow: [BoxShadow(color: _coral.withAlpha(100), blurRadius: 8)],
+                ),
+                child: const Icon(Icons.place_rounded, color: Colors.white, size: 14),
+              ),
+            ),
+          ]),
+        ],
       ),
     );
   }
@@ -130,7 +244,7 @@ class PlaceSwipeCard extends StatelessWidget {
     );
   }
 
-  Widget _gradient() {
+  Widget _gradient(PlaceModel place) {
     final colors = _gradients[place.category] ?? [_coral, const Color(0xFFFF8E53)];
     return Container(
       decoration: BoxDecoration(

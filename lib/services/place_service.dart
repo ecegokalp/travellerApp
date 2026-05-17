@@ -3,9 +3,17 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/place_model.dart';
 import '../models/review_model.dart';
+
+// Top-level function for isolate JSON parsing
+List<Map<String, dynamic>> _parseOverpassResponse(String body) {
+  final data = json.decode(body);
+  final elements = data['elements'] as List;
+  return elements.cast<Map<String, dynamic>>();
+}
 
 class PlaceService {
   final _firestore = FirebaseFirestore.instance;
@@ -55,6 +63,9 @@ class PlaceService {
     }
   }
 
+  // Callback to notify UI when Wikidata info finishes loading in background
+  VoidCallback? onWikidataLoaded;
+
   // Fetch places from Overpass API
   Future<List<PlaceModel>> fetchPlacesFromOverpass(CityData city) async {
     final query = '''
@@ -84,8 +95,8 @@ out center 150;
 
       if (response.statusCode != 200) return [];
 
-      final data = json.decode(response.body);
-      final elements = data['elements'] as List;
+      // Parse JSON in isolate to avoid blocking UI thread
+      final elements = await compute(_parseOverpassResponse, response.body);
 
       final places = elements
           .where((e) {
@@ -96,16 +107,22 @@ out center 150;
           .map((e) => PlaceModel.fromOverpassJson(e, city.name, city.country))
           .toList();
 
-      // Fetch images + ratings for places that have wikidata IDs
-      await _fetchWikidataInfo(places);
-
-      // Sort: most popular first (wikidata sitelinks count)
-      places.sort((a, b) => b.wikidataSitelinks.compareTo(a.wikidataSitelinks));
+      // Return places immediately, fetch Wikidata in background
+      _fetchWikidataInBackground(places);
 
       return places;
     } catch (_) {
       return [];
     }
+  }
+
+  // Fetch Wikidata info without blocking - UI updates when done
+  void _fetchWikidataInBackground(List<PlaceModel> places) {
+    _fetchWikidataInfo(places).then((_) {
+      // Sort after wikidata loads
+      places.sort((a, b) => b.wikidataSitelinks.compareTo(a.wikidataSitelinks));
+      onWikidataLoaded?.call();
+    }).catchError((_) {});
   }
 
   // Batch fetch images + popularity rating from Wikidata API

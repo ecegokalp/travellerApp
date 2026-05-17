@@ -438,7 +438,7 @@ class _HomePageState extends State<HomePage> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          _events = {};
+          final newEvents = <DateTime, List<dynamic>>{};
           for (var doc in snapshot.data!.docs) {
             final data = doc.data() as Map<String, dynamic>;
             final startDate = (data['startDate'] as Timestamp?)?.toDate();
@@ -453,8 +453,8 @@ class _HomePageState extends State<HomePage> {
               int safety = 0;
               while ((current.isBefore(last) || current.isAtSameMomentAs(last)) && safety < 365) {
                 final dayKey = DateTime(current.year, current.month, current.day);
-                if (_events[dayKey] == null) _events[dayKey] = [];
-                _events[dayKey]!.add({
+                if (newEvents[dayKey] == null) newEvents[dayKey] = [];
+                newEvents[dayKey]!.add({
                   'city': city,
                   'country': data['country'] ?? '',
                   'hotel': data['hotelName'] ?? '',
@@ -467,8 +467,8 @@ class _HomePageState extends State<HomePage> {
               }
             } else if (startDate != null) {
               final dayKey = DateTime(startDate.year, startDate.month, startDate.day);
-              if (_events[dayKey] == null) _events[dayKey] = [];
-              _events[dayKey]!.add({
+              if (newEvents[dayKey] == null) newEvents[dayKey] = [];
+              newEvents[dayKey]!.add({
                 'city': city,
                 'country': data['country'] ?? '',
                 'hotel': data['hotelName'] ?? '',
@@ -478,6 +478,7 @@ class _HomePageState extends State<HomePage> {
               });
             }
           }
+          _events = newEvents;
         }
 
         return Container(

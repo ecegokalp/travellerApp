@@ -59,8 +59,18 @@ class _MapExplorePageState extends State<MapExplorePage> {
   void initState() {
     super.initState();
     _initLocation();
-    _likedSub = _placeService.getLikedPlacesStream().listen((p) {
-      if (mounted) setState(() => _liked = p);
+    // When Wikidata finishes loading in background, refresh cards with images/ratings
+    _placeService.onWikidataLoaded = () {
+      if (mounted) setState(() {});
+    };
+    _likedSub = _placeService.getLikedPlacesStream().listen((newLiked) {
+      if (!mounted) return;
+      // Only rebuild if liked places actually changed
+      final oldIds = _liked.map((p) => p['id']).toSet();
+      final newIds = newLiked.map((p) => p['id']).toSet();
+      if (oldIds.length != newIds.length || !oldIds.containsAll(newIds)) {
+        setState(() => _liked = newLiked);
+      }
     }, onError: (e) {
       debugPrint('Liked places stream error: $e');
     });
@@ -68,6 +78,7 @@ class _MapExplorePageState extends State<MapExplorePage> {
 
   @override
   void dispose() {
+    _placeService.onWikidataLoaded = null;
     _likedSub?.cancel();
     _swiperController.dispose();
     _mapController.dispose();
@@ -189,7 +200,7 @@ class _MapExplorePageState extends State<MapExplorePage> {
     return Scaffold(
       body: Stack(
         children: [
-          _map(isDark),
+          RepaintBoundary(child: _map(isDark)),
           _searchBar(isDark),
           if (_selectedCity != null && !_showSearch) _filterChips(isDark),
           if (hasCards) _swiper(),
@@ -211,13 +222,15 @@ class _MapExplorePageState extends State<MapExplorePage> {
       options: MapOptions(
         initialCenter: _userLoc ?? const LatLng(41.0082, 28.9784),
         initialZoom: 12,
-        onTap: (_, __) => setState(() => _showSearch = false),
+        onTap: (_, __) {
+          if (_showSearch) setState(() => _showSearch = false);
+        },
       ),
       children: [
         TileLayer(
           urlTemplate: isDark
-              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-              : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+              : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
           subdomains: const ['a', 'b', 'c', 'd'],
           userAgentPackageName: 'com.example.traveller_app',
         ),
@@ -231,23 +244,24 @@ class _MapExplorePageState extends State<MapExplorePage> {
               ),
             )),
           ]),
-        MarkerLayer(markers: _liked.map((p) {
-          return Marker(
-            point: LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble()),
-            width: 36, height: 36,
-            child: GestureDetector(
-              onTap: () => _showLikedSheet(p),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _coral, shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2.5),
-                  boxShadow: [BoxShadow(color: _coral.withAlpha(80), blurRadius: 8)],
+        if (_liked.isNotEmpty)
+          MarkerLayer(markers: _liked.map((p) {
+            return Marker(
+              point: LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble()),
+              width: 36, height: 36,
+              child: GestureDetector(
+                onTap: () => _showLikedSheet(p),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _coral, shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2.5),
+                    boxShadow: [BoxShadow(color: _coral.withAlpha(80), blurRadius: 8)],
+                  ),
+                  child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 16),
                 ),
-                child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 16),
               ),
-            ),
-          );
-        }).toList()),
+            );
+          }).toList()),
         if (_showSwiper && _filtered.isNotEmpty && _cardIdx < _filtered.length)
           MarkerLayer(markers: [
             Marker(
