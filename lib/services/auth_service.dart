@@ -222,6 +222,8 @@ class AuthService {
     });
 
     await batch.commit();
+
+    _sendNotification(toUid: targetUid, type: 'follow', message: 'started following you');
   }
 
   Future<void> unfollowUser(String targetUid) async {

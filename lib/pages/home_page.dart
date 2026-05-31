@@ -523,6 +523,10 @@ class _HomePageState extends State<HomePage> {
                           icon = Icons.bookmark_rounded;
                           iconColor = Colors.amber[700]!;
                           break;
+                        case 'follow':
+                          icon = Icons.person_add_rounded;
+                          iconColor = const Color(0xFF2ECC71);
+                          break;
                         default:
                           icon = Icons.notifications_rounded;
                           iconColor = _warmGray;
