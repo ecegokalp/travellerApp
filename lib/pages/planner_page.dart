@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
+import '../services/gemini_service.dart';
 
 class PlannerPage extends StatefulWidget {
   final Map<String, dynamic>? existingTrip;
@@ -52,6 +53,8 @@ class _PlannerPageState extends State<PlannerPage> {
   // Checklist
   final List<Map<String, dynamic>> _checklist = [];
   final _checklistController = TextEditingController();
+  final GeminiService _geminiService = GeminiService();
+  bool _checklistLoading = false;
 
   // Budget categories
   final _flightController = TextEditingController();
@@ -560,7 +563,62 @@ class _PlannerPageState extends State<PlannerPage> {
                   const SizedBox(height: 24),
 
                   // Checklist
-                  _buildSectionTitle('Checklist', textColor),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSectionTitle('Checklist', textColor),
+                      GestureDetector(
+                        onTap: _checklistLoading ? null : () async {
+                          final country = _countryController.text.trim();
+                          final city = _cityController.text.trim();
+                          if (country.isEmpty && city.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Enter a destination first', style: GoogleFonts.inter(fontWeight: FontWeight.w600)), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                            );
+                            return;
+                          }
+                          setState(() => _checklistLoading = true);
+                          try {
+                            final items = await _geminiService.generateChecklist(country.isNotEmpty ? country : 'World', city.isNotEmpty ? city : 'Trip');
+                            if (items != null && mounted) {
+                              setState(() {
+                                for (final item in items) {
+                                  if (!_checklist.any((c) => c['text'] == item)) {
+                                    _checklist.add({'text': item, 'done': false});
+                                  }
+                                }
+                              });
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('AI suggestion failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _checklistLoading = false);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _coral.withAlpha(20),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: _checklistLoading
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _coral))
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.auto_awesome, size: 16, color: _coral),
+                                    const SizedBox(width: 4),
+                                    Text('AI Suggest', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: _coral)),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),

@@ -103,6 +103,41 @@ class GeminiService {
     }
   }
 
+  Future<List<String>?> generateChecklist(String country, String city) async {
+    try {
+      await _ensureInitialized();
+      if (_model == null) return null;
+
+      final response = await _model!.generateContent([
+        Content.text(
+          'I am traveling to $city, $country. '
+          'Give me a travel checklist as a JSON array of strings. '
+          'Include country-specific items like visa requirements, currency, adaptor type, '
+          'health precautions, local customs, and general packing essentials. '
+          'Return ONLY a JSON array, no explanation. Example: ["Item 1","Item 2"]. '
+          'Keep it 10-15 items max, in English.',
+        ),
+      ]);
+
+      final text = response.text;
+      if (text == null) return null;
+
+      String cleaned = text.trim();
+      if (cleaned.contains('```')) {
+        cleaned = cleaned.replaceAll(RegExp(r'```json|```'), '').trim();
+      }
+      final match = RegExp(r'\[.*\]', dotAll: true).firstMatch(cleaned);
+      if (match != null) {
+        final list = jsonDecode(match.group(0)!) as List;
+        return list.map((e) => e.toString()).toList();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Gemini Checklist Error: $e');
+      return null;
+    }
+  }
+
   Map<String, dynamic>? _parseJson(String? text) {
     if (text == null) return null;
     try {

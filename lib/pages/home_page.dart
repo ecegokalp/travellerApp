@@ -262,6 +262,10 @@ class _HomePageState extends State<HomePage> {
                     _buildMyTripsSection(context, textColor, secondaryTextColor, isDark, cardColor),
                     const SizedBox(height: 28),
 
+                    // Trip Checklist Section
+                    _buildTripChecklist(textColor, secondaryTextColor, isDark, cardColor),
+                    const SizedBox(height: 28),
+
                     // Travel Calendar Section
                     _buildCalendarSection(cardColor, textColor, secondaryTextColor, isDark),
 
@@ -423,6 +427,172 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTripChecklist(Color textColor, Color secondaryTextColor, bool isDark, Color cardColor) {
+    final user = _authService.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    // Get the nearest upcoming trip's checklist
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('trips')
+          .orderBy('startDate')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final now = DateTime.now();
+        Map<String, dynamic>? activeTrip;
+        String? activeTripId;
+
+        // Find nearest upcoming or ongoing trip with checklist
+        for (final doc in snapshot.data!.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final checklist = data['checklist'] as List? ?? [];
+          if (checklist.isEmpty) continue;
+
+          final endDate = (data['endDate'] as Timestamp?)?.toDate();
+          if (endDate != null && endDate.isBefore(now)) continue; // skip past trips
+
+          activeTrip = data;
+          activeTripId = doc.id;
+          break;
+        }
+
+        if (activeTrip == null) return const SizedBox.shrink();
+
+        final checklist = (activeTrip['checklist'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        final city = activeTrip['city'] ?? '';
+        final country = activeTrip['country'] ?? '';
+        final startDate = (activeTrip['startDate'] as Timestamp?)?.toDate();
+        final doneCount = checklist.where((c) => c['done'] == true).length;
+        final total = checklist.length;
+        final progress = total > 0 ? doneCount / total : 0.0;
+
+        // Days until trip
+        String? dueLabel;
+        if (startDate != null && startDate.isAfter(now)) {
+          final days = startDate.difference(now).inDays;
+          if (days <= 7) {
+            dueLabel = days == 0 ? 'Today!' : days == 1 ? 'Tomorrow' : 'In $days days';
+          }
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC), width: 0.5),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withAlpha(isDark ? 20 : 8), blurRadius: 20, offset: const Offset(0, 10)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: _accent.withAlpha(20), borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.checklist_rounded, color: _accent, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Trip Checklist', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)),
+                        if (city.isNotEmpty)
+                          Text('$city${country.isNotEmpty ? ', $country' : ''}', style: GoogleFonts.inter(fontSize: 11, color: _accent, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                  Text('$doneCount/$total Done', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: secondaryTextColor)),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 50,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: isDark ? Colors.white10 : Colors.grey[200],
+                        valueColor: AlwaysStoppedAnimation<Color>(progress >= 1.0 ? const Color(0xFF2ECC71) : _accent),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Checklist items
+              ...checklist.asMap().entries.map((entry) {
+                final i = entry.key;
+                final item = entry.value;
+                final isDone = item['done'] == true;
+                return GestureDetector(
+                  onTap: () {
+                    // Toggle done state in Firestore
+                    checklist[i]['done'] = !isDone;
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('trips')
+                        .doc(activeTripId)
+                        .update({'checklist': checklist});
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    margin: const EdgeInsets.only(bottom: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withAlpha(5) : Colors.grey.withAlpha(10),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
+                          color: isDone ? const Color(0xFF2ECC71) : (isDark ? Colors.white30 : Colors.grey[400]),
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            item['text'] ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isDone ? secondaryTextColor : textColor,
+                              decoration: isDone ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                        ),
+                        if (dueLabel != null && !isDone)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: _accent.withAlpha(20),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(dueLabel, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: _accent)),
+                          ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.chevron_right_rounded, size: 18, color: isDark ? Colors.white24 : Colors.grey[400]),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 
