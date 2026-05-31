@@ -29,6 +29,9 @@ service cloud.firestore {
       match /calendar_events/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      match /notifications/{docId} {
+        allow read, write: if request.auth != null;
+      }
 
       // Followers/Following
       match /followers/{docId} {

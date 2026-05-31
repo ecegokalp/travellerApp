@@ -177,14 +177,38 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   // Notification bell
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withAlpha(10) : Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
+                  GestureDetector(
+                    onTap: () => _showNotifications(context, isDark, textColor),
+                    child: StreamBuilder<int>(
+                      stream: _authService.currentUser != null
+                          ? _authService.getUnreadNotificationCount(_authService.currentUser!.uid)
+                          : Stream.value(0),
+                      builder: (context, snap) {
+                        final count = snap.data ?? 0;
+                        return Stack(
+                          children: [
+                            Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white.withAlpha(10) : Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
+                              ),
+                              child: Icon(count > 0 ? Icons.notifications_rounded : Icons.notifications_none_rounded, size: 22, color: isDark ? Colors.white70 : _darkText),
+                            ),
+                            if (count > 0)
+                              Positioned(
+                                right: 0, top: 0,
+                                child: Container(
+                                  width: 18, height: 18,
+                                  decoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
+                                  child: Center(child: Text(count > 9 ? '9+' : '$count', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white))),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
-                    child: Icon(Icons.notifications_none_rounded, size: 22, color: isDark ? Colors.white70 : _darkText),
                   ),
                 ],
               ),
@@ -427,6 +451,145 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showNotifications(BuildContext context, bool isDark, Color textColor) {
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    // Mark all as read when opening
+    _authService.markNotificationsRead(user.uid);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Text('Notifications', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18, color: textColor)),
+            const Divider(),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _authService.getNotifications(user.uid),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  final docs = snapshot.data!.docs;
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.notifications_off_outlined, size: 48, color: _warmGray.withAlpha(120)),
+                          const SizedBox(height: 12),
+                          Text('No notifications yet', style: GoogleFonts.inter(color: _warmGray)),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: docs.length,
+                    itemBuilder: (context, i) {
+                      final n = docs[i].data() as Map<String, dynamic>;
+                      final fromName = n['fromName'] ?? 'Someone';
+                      final fromPhoto = n['fromPhoto'] as String? ?? '';
+                      final message = n['message'] ?? '';
+                      final type = n['type'] ?? '';
+                      final isRead = n['read'] == true;
+                      final createdAt = (n['createdAt'] as Timestamp?)?.toDate();
+
+                      IconData icon;
+                      Color iconColor;
+                      switch (type) {
+                        case 'like':
+                          icon = Icons.favorite_rounded;
+                          iconColor = _accent;
+                          break;
+                        case 'comment':
+                          icon = Icons.chat_bubble_rounded;
+                          iconColor = Colors.blue;
+                          break;
+                        case 'save':
+                          icon = Icons.bookmark_rounded;
+                          iconColor = Colors.amber[700]!;
+                          break;
+                        default:
+                          icon = Icons.notifications_rounded;
+                          iconColor = _warmGray;
+                      }
+
+                      String timeAgo = '';
+                      if (createdAt != null) {
+                        final diff = DateTime.now().difference(createdAt);
+                        if (diff.inMinutes < 1) {
+                          timeAgo = 'just now';
+                        } else if (diff.inMinutes < 60) {
+                          timeAgo = '${diff.inMinutes}m';
+                        } else if (diff.inHours < 24) {
+                          timeAgo = '${diff.inHours}h';
+                        } else {
+                          timeAgo = '${diff.inDays}d';
+                        }
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isRead ? Colors.transparent : _accent.withAlpha(8),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: _accent.withAlpha(30),
+                              backgroundImage: fromPhoto.isNotEmpty ? NetworkImage(fromPhoto) : null,
+                              child: fromPhoto.isEmpty ? Text(fromName[0].toUpperCase(), style: const TextStyle(color: _accent, fontWeight: FontWeight.bold)) : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  style: GoogleFonts.inter(fontSize: 13, color: textColor),
+                                  children: [
+                                    TextSpan(text: fromName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                    TextSpan(text: ' $message'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              children: [
+                                Icon(icon, size: 18, color: iconColor),
+                                if (timeAgo.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(timeAgo, style: GoogleFonts.inter(fontSize: 10, color: _warmGray)),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

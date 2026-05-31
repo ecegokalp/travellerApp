@@ -358,6 +358,11 @@ class AuthService {
     }
 
     await batch.commit();
+
+    // Send notification on like (not unlike)
+    if (!likeDoc.exists) {
+      _sendNotification(toUid: authorId, type: 'like', message: 'liked your story', blogId: blogId);
+    }
   }
 
   Stream<bool> isLiked(String authorId, String blogId) {
@@ -412,6 +417,9 @@ class AuthService {
       });
       transaction.update(docRef, {'commentCount': FieldValue.increment(1)});
     });
+
+    // Send notification
+    _sendNotification(toUid: authorId, type: 'comment', message: 'commented on your story', blogId: blogId);
   }
 
   Stream<QuerySnapshot> getComments(String authorId, String blogId) {
@@ -473,6 +481,9 @@ class AuthService {
       'country': blogData['country'] ?? '',
       'savedAt': FieldValue.serverTimestamp(),
     });
+
+    // Send notification
+    _sendNotification(toUid: authorId, type: 'save', message: 'saved your story', blogId: blogId);
   }
 
   Future<void> unsaveBlog(String authorId, String blogId) async {
@@ -526,5 +537,67 @@ class AuthService {
     if (user == null) return;
 
     await _firestore.collection('users').doc(user.uid).update({'username': username});
+  }
+
+  // --- In-App Notifications ---
+
+  Future<void> _sendNotification({
+    required String toUid,
+    required String type,
+    required String message,
+    String? blogId,
+  }) async {
+    final myUid = currentUser?.uid;
+    if (myUid == null || myUid == toUid) return; // don't notify yourself
+
+    final profile = await getUserProfile(myUid);
+    final myName = profile?['fullName'] ?? profile?['username'] ?? 'Someone';
+    final myPhoto = profile?['photoUrl'] ?? '';
+
+    await _firestore.collection('users').doc(toUid).collection('notifications').add({
+      'type': type,
+      'fromUid': myUid,
+      'fromName': myName,
+      'fromPhoto': myPhoto,
+      'message': message,
+      'blogId': blogId,
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<QuerySnapshot> getNotifications(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots();
+  }
+
+  Stream<int> getUnreadNotificationCount(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
+
+  Future<void> markNotificationsRead(String uid) async {
+    final snap = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .where('read', isEqualTo: false)
+        .get();
+
+    final batch = _firestore.batch();
+    for (final doc in snap.docs) {
+      batch.update(doc.reference, {'read': true});
+    }
+    await batch.commit();
   }
 }

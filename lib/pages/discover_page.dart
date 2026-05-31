@@ -83,13 +83,9 @@ class _DiscoverPageState extends State<DiscoverPage> {
                       _circleBtn(Icons.arrow_back_ios_new, isDark, cardColor, textColor, () => Navigator.pop(context))
                     else
                       const SizedBox(width: 44),
-                    Row(children: [
-                      _circleBtn(Icons.tune_rounded, isDark, cardColor, textColor, () {}),
-                      const SizedBox(width: 12),
-                      _circleBtn(Icons.edit_note_rounded, isDark, cardColor, textColor, () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BlogPage()));
-                      }),
-                    ]),
+                    _circleBtn(Icons.edit_note_rounded, isDark, cardColor, textColor, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const BlogPage()));
+                    }),
                   ],
                 ),
                 const SizedBox(height: 28),

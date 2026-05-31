@@ -25,7 +25,7 @@ class CurrencyService {
 
     try {
       final response = await http.get(
-        Uri.parse('https://api.frankfurter.app/latest?from=EUR&to=TRY,USD,GBP'),
+        Uri.parse('https://api.frankfurter.dev/v1/latest?from=EUR&to=TRY,USD,GBP'),
         headers: {'User-Agent': 'WanderApp/1.0'},
       ).timeout(const Duration(seconds: 10));
 
@@ -49,7 +49,7 @@ class CurrencyService {
     } catch (_) {}
 
     // Fallback rates if API fails
-    return {'TRY': 1.0, 'EUR': 38.0, 'USD': 34.0, 'GBP': 44.0};
+    return {'TRY': 1.0, 'EUR': 53.0, 'USD': 46.0, 'GBP': 62.0};
   }
 
   double convertToTRY(double amount, String fromCurrency, Map<String, double> rates) {
