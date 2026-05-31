@@ -1,17 +1,38 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 class GeminiService {
-  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
+  static String _apiKey = '';
+  GenerativeModel? _model;
 
-  late final GenerativeModel _model;
+  static final GeminiService _instance = GeminiService._();
+  factory GeminiService() => _instance;
+  GeminiService._();
 
-  GeminiService() {
+  Future<void> _ensureInitialized() async {
+    if (_model != null) return;
+
+    // Try dart-define first, then env.json asset
+    _apiKey = const String.fromEnvironment('GEMINI_API_KEY');
+    if (_apiKey.isEmpty) {
+      try {
+        final jsonStr = await rootBundle.loadString('env.json');
+        final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+        _apiKey = map['GEMINI_API_KEY'] ?? '';
+      } catch (_) {}
+    }
+
+    if (_apiKey.isEmpty) {
+      debugPrint('WARNING: GEMINI_API_KEY not found');
+      return;
+    }
+
     _model = GenerativeModel(
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       apiKey: _apiKey,
       safetySettings: [
         SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
@@ -34,6 +55,9 @@ class GeminiService {
 
   Future<String?> generateBlogContent(String country, String city) async {
     try {
+      await _ensureInitialized();
+      if (_model == null) return null;
+
       debugPrint('Gemini: Generating blog for $city, $country...');
       final content = [
         Content.text('Write a short, engaging travel blog post about $city, $country. '
@@ -41,7 +65,7 @@ class GeminiService {
             'Keep it under 120 words. Friendly and adventurous tone.'),
       ];
 
-      final response = await _model.generateContent(content);
+      final response = await _model!.generateContent(content);
       final text = response.text;
       if (text == null || text.trim().isEmpty) return null;
       return text;
@@ -53,6 +77,9 @@ class GeminiService {
 
   Future<Map<String, dynamic>?> processDocument(File file) async {
     try {
+      await _ensureInitialized();
+      if (_model == null) return null;
+
       final bytes = await file.readAsBytes();
       final extension = p.extension(file.path).toLowerCase();
       final mimeType = _mimeTypeFromExtension(extension);
@@ -62,13 +89,13 @@ class GeminiService {
           DataPart(mimeType, bytes),
           TextPart(
             'Extract trip details from this document and return ONLY a JSON object with these fields: '
-            '"name", "price", "currency", "city", "country", "startDate" (YYYY-MM-DD), "endDate" (YYYY-MM-DD). '
+            '"name", "type" (one of: flight, hotel, transport, ticket), "price", "currency", "city", "country", "startDate" (YYYY-MM-DD), "endDate" (YYYY-MM-DD). '
             'If a field is not found, omit it.',
           ),
         ]),
       ];
 
-      final response = await _model.generateContent(content);
+      final response = await _model!.generateContent(content);
       return _parseJson(response.text);
     } catch (e) {
       debugPrint('Gemini Document Error: $e');

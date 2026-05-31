@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +7,6 @@ import '../services/auth_service.dart';
 import 'settings_page.dart';
 import 'planner_page.dart';
 import 'trip_details_page.dart';
-import 'profile_page.dart';
 import 'blog_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -430,16 +430,14 @@ class _HomePageState extends State<HomePage> {
     final user = _authService.currentUser;
     if (user == null) return const SizedBox.shrink();
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('trips')
-          .snapshots(),
+    return StreamBuilder<List<QuerySnapshot>>(
+      stream: _combinedCalendarStream(user.uid),
       builder: (context, snapshot) {
-        if (snapshot.hasData) {
+        if (snapshot.hasData && snapshot.data!.length == 2) {
           final newEvents = <DateTime, List<dynamic>>{};
-          for (var doc in snapshot.data!.docs) {
+
+          // Process trips
+          for (var doc in snapshot.data![0].docs) {
             final data = doc.data() as Map<String, dynamic>;
             final startDate = (data['startDate'] as Timestamp?)?.toDate();
             final endDate = (data['endDate'] as Timestamp?)?.toDate();
@@ -449,7 +447,6 @@ class _HomePageState extends State<HomePage> {
               DateTime current = DateTime(startDate.year, startDate.month, startDate.day);
               DateTime last = DateTime(endDate.year, endDate.month, endDate.day);
 
-              // Cap at 365 days to prevent infinite/huge loops
               int safety = 0;
               while ((current.isBefore(last) || current.isAtSameMomentAs(last)) && safety < 365) {
                 final dayKey = DateTime(current.year, current.month, current.day);
@@ -461,6 +458,7 @@ class _HomePageState extends State<HomePage> {
                   'budget': data['totalBudgetTRY'] ?? 0,
                   'id': doc.id,
                   'data': data,
+                  'source': 'trip',
                 });
                 current = current.add(const Duration(days: 1));
                 safety++;
@@ -475,9 +473,56 @@ class _HomePageState extends State<HomePage> {
                 'budget': data['totalBudgetTRY'] ?? 0,
                 'id': doc.id,
                 'data': data,
+                'source': 'trip',
               });
             }
           }
+
+          // Process calendar events (from documents)
+          for (var doc in snapshot.data![1].docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final startDate = (data['startDate'] as Timestamp?)?.toDate();
+            final endDate = (data['endDate'] as Timestamp?)?.toDate();
+            final name = data['name'] ?? 'Event';
+            final type = data['type'] ?? 'travel';
+
+            if (startDate == null) continue;
+
+            // Flights: only mark the single day (departure or return)
+            // Hotels/other: mark the full date range
+            if (type == 'flight' || endDate == null) {
+              final dayKey = DateTime(startDate.year, startDate.month, startDate.day);
+              if (newEvents[dayKey] == null) newEvents[dayKey] = [];
+              newEvents[dayKey]!.add({
+                'name': name,
+                'type': type,
+                'city': data['city'] ?? '',
+                'country': data['country'] ?? '',
+                'id': doc.id,
+                'source': 'document',
+              });
+            } else {
+              DateTime current = DateTime(startDate.year, startDate.month, startDate.day);
+              DateTime last = DateTime(endDate.year, endDate.month, endDate.day);
+
+              int safety = 0;
+              while ((current.isBefore(last) || current.isAtSameMomentAs(last)) && safety < 365) {
+                final dayKey = DateTime(current.year, current.month, current.day);
+                if (newEvents[dayKey] == null) newEvents[dayKey] = [];
+                newEvents[dayKey]!.add({
+                  'name': name,
+                  'type': type,
+                  'city': data['city'] ?? '',
+                  'country': data['country'] ?? '',
+                  'id': doc.id,
+                  'source': 'document',
+                });
+                current = current.add(const Duration(days: 1));
+                safety++;
+              }
+            }
+          }
+
           _events = newEvents;
         }
 
@@ -524,7 +569,7 @@ class _HomePageState extends State<HomePage> {
                   todayDecoration: BoxDecoration(color: _accent.withAlpha(60), shape: BoxShape.circle),
                   selectedDecoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
                   markerDecoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
-                  markersMaxCount: 1,
+                  markersMaxCount: 2,
                   defaultTextStyle: GoogleFonts.inter(color: textColor),
                   weekendTextStyle: GoogleFonts.inter(color: textColor.withAlpha(150)),
                 ),
@@ -543,6 +588,12 @@ class _HomePageState extends State<HomePage> {
               if (_selectedDay != null && _events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] != null)
                 ...(_events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!).map((event) {
                   final e = event as Map<String, dynamic>;
+                  final isDocument = e['source'] == 'document';
+
+                  if (isDocument) {
+                    return _buildDocumentEventCard(e, textColor, secondaryTextColor);
+                  }
+
                   return Container(
                     margin: const EdgeInsets.only(top: 12),
                     padding: const EdgeInsets.all(12),
@@ -589,5 +640,117 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  Widget _buildDocumentEventCard(Map<String, dynamic> e, Color textColor, Color secondaryTextColor) {
+    final type = e['type'] as String? ?? 'travel';
+    final name = e['name'] as String? ?? 'Event';
+    final city = e['city'] as String? ?? '';
+    final country = e['country'] as String? ?? '';
+
+    IconData icon;
+    Color iconColor;
+    switch (type) {
+      case 'flight':
+        icon = Icons.flight_rounded;
+        iconColor = Colors.blue;
+        break;
+      case 'hotel':
+        icon = Icons.hotel_rounded;
+        iconColor = Colors.purple;
+        break;
+      case 'transport':
+        icon = Icons.directions_bus_rounded;
+        iconColor = Colors.orange;
+        break;
+      case 'ticket':
+        icon = Icons.confirmation_number_rounded;
+        iconColor = Colors.teal;
+        break;
+      default:
+        icon = Icons.event_rounded;
+        iconColor = _accent;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: iconColor.withAlpha(10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: iconColor.withAlpha(40)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withAlpha(20),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: textColor), maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (city.isNotEmpty)
+                  Text('$city${country.isNotEmpty ? ', $country' : ''}', style: GoogleFonts.inter(fontSize: 11, color: secondaryTextColor)),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: iconColor.withAlpha(20),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              type == 'flight' ? 'Flight' : type == 'hotel' ? 'Hotel' : type == 'transport' ? 'Transport' : 'Event',
+              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: iconColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Stream<List<QuerySnapshot>> _combinedCalendarStream(String uid) {
+    final tripsStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('trips')
+        .snapshots();
+
+    final eventsStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('calendar_events')
+        .snapshots();
+
+    // Combine both streams - emit when either changes
+    QuerySnapshot? lastTrips;
+    QuerySnapshot? lastEvents;
+    final controller = StreamController<List<QuerySnapshot>>();
+
+    final tripsSub = tripsStream.listen((snap) {
+      lastTrips = snap;
+      if (lastEvents != null) controller.add([lastTrips!, lastEvents!]);
+    });
+
+    final eventsSub = eventsStream.listen((snap) {
+      lastEvents = snap;
+      if (lastTrips != null) controller.add([lastTrips!, lastEvents!]);
+    });
+
+    controller.onCancel = () {
+      tripsSub.cancel();
+      eventsSub.cancel();
+      controller.close();
+    };
+
+    return controller.stream;
   }
 }
