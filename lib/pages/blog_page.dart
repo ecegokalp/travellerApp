@@ -513,13 +513,18 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final comment = docs[index].data() as Map<String, dynamic>;
+                    final displayName = (comment['fullName'] as String?)?.isNotEmpty == true
+                        ? comment['fullName']
+                        : (comment['username'] as String?)?.isNotEmpty == true
+                            ? comment['username']
+                            : 'Traveller';
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
                         backgroundColor: const Color(0xFFFF6B6B).withAlpha(30),
-                        child: Text((comment['username'] ?? 'T')[0].toUpperCase(), style: const TextStyle(color: Color(0xFFFF6B6B))),
+                        child: Text(displayName[0].toUpperCase(), style: const TextStyle(color: Color(0xFFFF6B6B))),
                       ),
-                      title: Text(comment['username'] ?? 'Traveller', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+                      title: Text(displayName, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
                       subtitle: Text(comment['text'] ?? '', style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white70 : Colors.black87)),
                     );
                   },

@@ -45,7 +45,12 @@ service cloud.firestore {
     match /{path=**}/blogs/{blogId} {
       allow read: if true;
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      // Author can update/delete anything; others can only update likeCount/commentCount
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.authorId ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount', 'commentCount'])
+      );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.authorId;
     }
 
     // Likes on blogs
