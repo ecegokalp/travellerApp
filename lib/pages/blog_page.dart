@@ -219,7 +219,19 @@ class _BlogPageState extends State<BlogPage> with SingleTickerProviderStateMixin
               ),
             ),
             title: Text(authorName, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15)),
-            subtitle: Text('${blog['city']}, ${blog['country']}', style: GoogleFonts.inter(color: _accent, fontSize: 12, fontWeight: FontWeight.w600)),
+            subtitle: Row(
+              children: [
+                Text('${blog['city']}, ${blog['country']}', style: GoogleFonts.inter(color: _accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                if (blog['rating'] != null && (blog['rating'] as num) > 0) ...[
+                  const SizedBox(width: 8),
+                  ...List.generate(5, (i) => Icon(
+                    i < (blog['rating'] as num).round() ? Icons.star_rounded : Icons.star_border_rounded,
+                    size: 12,
+                    color: i < (blog['rating'] as num).round() ? Colors.amber : Colors.grey[400],
+                  )),
+                ],
+              ],
+            ),
             trailing: authorId == _authService.currentUser?.uid
                 ? GestureDetector(
                     onTap: () => _showBlogOptionsSheet(blogId, blog),
@@ -583,6 +595,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
   final AuthService _authService = AuthService();
   final List<File> _images = [];
   bool _loading = false;
+  double _rating = 0;
 
   static const _accent = Color(0xFFFF6B6B);
 
@@ -678,6 +691,25 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
                       fillColor: isDark ? Colors.white10 : Colors.grey[100],
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Rating
+                  Row(
+                    children: [
+                      Text('Rate this place', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white60 : Colors.grey[600])),
+                      const SizedBox(width: 12),
+                      ...List.generate(5, (i) => GestureDetector(
+                        onTap: () => setState(() => _rating = i + 1.0),
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Icon(
+                            i < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: i < _rating ? Colors.amber : (isDark ? Colors.white30 : Colors.grey[400]),
+                            size: 28,
+                          ),
+                        ),
+                      )),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   _buildAIBtn(),
@@ -846,6 +878,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
         'imageUrls': imageUrls,
         'city': city,
         'country': country,
+        'rating': _rating > 0 ? _rating : null,
         'createdAt': FieldValue.serverTimestamp(),
         'likeCount': 0,
         'commentCount': 0,
