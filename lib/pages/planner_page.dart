@@ -7,6 +7,7 @@ import 'dart:io';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../services/gemini_service.dart';
+import '../services/notification_service.dart';
 
 class PlannerPage extends StatefulWidget {
   final Map<String, dynamic>? existingTrip;
@@ -54,6 +55,7 @@ class _PlannerPageState extends State<PlannerPage> {
   final List<Map<String, dynamic>> _checklist = [];
   final _checklistController = TextEditingController();
   final GeminiService _geminiService = GeminiService();
+  final NotificationService _notificationService = NotificationService();
   bool _checklistLoading = false;
 
   // Budget categories
@@ -195,8 +197,8 @@ class _PlannerPageState extends State<PlannerPage> {
     }
   }
 
-  Future<void> _syncToPersonalDocuments(String userId, String fileName, String url, int size) async {
-    await FirebaseFirestore.instance
+  Future<String> _syncToPersonalDocuments(String userId, String fileName, String url, int size) async {
+    final docRef = await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
         .collection('personal_documents')
@@ -207,6 +209,145 @@ class _PlannerPageState extends State<PlannerPage> {
       'type': 'general',
       'size': size,
     });
+    return docRef.id;
+  }
+
+  Future<void> _processDocumentForCalendar(File file, String fileName, String docId, String uid) async {
+    try {
+      final extracted = await _geminiService.processDocument(file);
+      debugPrint('Gemini extracted (planner): $extracted');
+      if (extracted == null) return;
+
+      String? _str(dynamic v) => v is String ? v : v is List ? v.firstOrNull?.toString() : v?.toString();
+      final name = _str(extracted['name']) ?? fileName;
+      final city = _str(extracted['city']);
+      final country = _str(extracted['country']);
+      final startDateStr = _str(extracted['startDate']);
+      final endDateStr = _str(extracted['endDate']);
+
+      String eventType = 'travel';
+      final geminiType = _str(extracted['type'])?.toLowerCase() ?? '';
+      final lowerName = '${fileName.toLowerCase()} ${name.toLowerCase()} $geminiType';
+
+      const airlines = ['sunexpress', 'sun express', 'thy', 'turkish airlines', 'türk hava',
+        'pegasus', 'anadolujet', 'onur air', 'corendon', 'ryanair', 'easyjet',
+        'lufthansa', 'emirates', 'qatar', 'wizz', 'flydubai', 'airfrance'];
+
+      if (lowerName.contains('flight') || lowerName.contains('uçuş') || lowerName.contains('boarding') ||
+          lowerName.contains('havayol') || lowerName.contains('airline') ||
+          airlines.any((a) => lowerName.contains(a))) {
+        eventType = 'flight';
+      } else if (lowerName.contains('hotel') || lowerName.contains('otel') || lowerName.contains('reservation') ||
+          lowerName.contains('booking') || lowerName.contains('airbnb') || lowerName.contains('konaklama')) {
+        eventType = 'hotel';
+      } else if (lowerName.contains('bus') || lowerName.contains('otobüs') || lowerName.contains('train') || lowerName.contains('tren')) {
+        eventType = 'transport';
+      } else if (lowerName.contains('ticket') || lowerName.contains('bilet')) {
+        eventType = 'ticket';
+      }
+
+      if (startDateStr == null) return;
+      final startDate = DateTime.tryParse(startDateStr);
+      if (startDate == null) return;
+      final endDate = endDateStr != null ? DateTime.tryParse(endDateStr) : null;
+
+      if (eventType == 'flight' && endDate != null) {
+        final depRef = await FirebaseFirestore.instance
+            .collection('users').doc(uid).collection('calendar_events').add({
+          'name': '$name (Departure)',
+          'type': eventType,
+          'city': city,
+          'country': country,
+          'startDate': Timestamp.fromDate(startDate),
+          'endDate': null,
+          'documentId': docId,
+          'documentName': fileName,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        final retRef = await FirebaseFirestore.instance
+            .collection('users').doc(uid).collection('calendar_events').add({
+          'name': '$name (Return)',
+          'type': eventType,
+          'city': city,
+          'country': country,
+          'startDate': Timestamp.fromDate(endDate),
+          'endDate': null,
+          'documentId': docId,
+          'documentName': fileName,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        await _notificationService.scheduleEventReminders(
+          eventId: depRef.id, eventName: '$name (Departure)',
+          eventType: _eventTypeLabel(eventType), eventDate: startDate, city: city,
+        );
+        await _notificationService.scheduleEventReminders(
+          eventId: retRef.id, eventName: '$name (Return)',
+          eventType: _eventTypeLabel(eventType), eventDate: endDate, city: city,
+        );
+
+        await FirebaseFirestore.instance
+            .collection('users').doc(uid).collection('personal_documents').doc(docId).update({
+          'type': eventType,
+          'extractedData': extracted,
+          'calendarEventId': depRef.id,
+          'calendarEventIdReturn': retRef.id,
+        });
+      } else {
+        final eventRef = await FirebaseFirestore.instance
+            .collection('users').doc(uid).collection('calendar_events').add({
+          'name': name,
+          'type': eventType,
+          'city': city,
+          'country': country,
+          'startDate': Timestamp.fromDate(startDate),
+          'endDate': endDate != null ? Timestamp.fromDate(endDate) : null,
+          'documentId': docId,
+          'documentName': fileName,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        await _notificationService.scheduleEventReminders(
+          eventId: eventRef.id, eventName: name,
+          eventType: _eventTypeLabel(eventType), eventDate: startDate, city: city,
+        );
+
+        await FirebaseFirestore.instance
+            .collection('users').doc(uid).collection('personal_documents').doc(docId).update({
+          'type': eventType,
+          'extractedData': extracted,
+          'calendarEventId': eventRef.id,
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(children: [
+              const Icon(Icons.calendar_today_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Added to calendar: $name', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+            ]),
+            backgroundColor: const Color(0xFF4A90D9),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Document calendar processing error (planner): $e');
+    }
+  }
+
+  String _eventTypeLabel(String type) {
+    switch (type) {
+      case 'flight': return 'flight';
+      case 'hotel': return 'hotel reservation';
+      case 'transport': return 'transport';
+      case 'ticket': return 'ticket';
+      default: return 'travel event';
+    }
   }
 
   Future<String?> _uploadFile(PlatformFile pickedFile, String userId, String subFolder) async {
@@ -258,7 +399,10 @@ class _PlannerPageState extends State<PlannerPage> {
         if (_pickedHotelFile != null) {
           hotelFileUrl = await _uploadFile(_pickedHotelFile!, user.uid, 'hotel_documents');
           if (hotelFileUrl != null) {
-            await _syncToPersonalDocuments(user.uid, _pickedHotelFile!.name, hotelFileUrl, _pickedHotelFile!.size);
+            final docId = await _syncToPersonalDocuments(user.uid, _pickedHotelFile!.name, hotelFileUrl, _pickedHotelFile!.size);
+            if (_pickedHotelFile!.path != null) {
+              _processDocumentForCalendar(File(_pickedHotelFile!.path!), _pickedHotelFile!.name, docId, user.uid);
+            }
           }
         }
 
@@ -267,7 +411,10 @@ class _PlannerPageState extends State<PlannerPage> {
         if (_pickedFlightFile != null) {
           flightFileUrl = await _uploadFile(_pickedFlightFile!, user.uid, 'flight_documents');
           if (flightFileUrl != null) {
-            await _syncToPersonalDocuments(user.uid, _pickedFlightFile!.name, flightFileUrl, _pickedFlightFile!.size);
+            final docId = await _syncToPersonalDocuments(user.uid, _pickedFlightFile!.name, flightFileUrl, _pickedFlightFile!.size);
+            if (_pickedFlightFile!.path != null) {
+              _processDocumentForCalendar(File(_pickedFlightFile!.path!), _pickedFlightFile!.name, docId, user.uid);
+            }
           }
         }
 
@@ -276,13 +423,16 @@ class _PlannerPageState extends State<PlannerPage> {
         for (var place in _places) {
           String? placeFileUrl = place['documentUrl'];
           String? fileName = place['documentName'];
-          
+
           if (place['tempFile'] != null) {
             PlatformFile pf = place['tempFile'];
             placeFileUrl = await _uploadFile(pf, user.uid, 'place_documents');
             fileName = pf.name;
             if (placeFileUrl != null) {
-              await _syncToPersonalDocuments(user.uid, pf.name, placeFileUrl, pf.size);
+              final docId = await _syncToPersonalDocuments(user.uid, pf.name, placeFileUrl, pf.size);
+              if (pf.path != null) {
+                _processDocumentForCalendar(File(pf.path!), pf.name, docId, user.uid);
+              }
             }
           }
           

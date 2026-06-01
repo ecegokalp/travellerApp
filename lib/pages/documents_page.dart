@@ -487,12 +487,18 @@ class _DocumentsPageState extends State<DocumentsPage> {
     }
   }
 
+  String? _asString(dynamic v) {
+    if (v is String) return v;
+    if (v is List && v.isNotEmpty) return v.first?.toString();
+    return v?.toString();
+  }
+
   String _typeSubtitle(Map<String, dynamic> data) {
     final type = data['type'] as String? ?? 'general';
     final extracted = data['extractedData'] as Map<String, dynamic>?;
     if (extracted != null) {
-      final city = extracted['city'] as String?;
-      final startDate = extracted['startDate'] as String?;
+      final city = _asString(extracted['city']);
+      final startDate = _asString(extracted['startDate']);
       final parts = <String>[];
       if (city != null) parts.add(city);
       if (startDate != null) parts.add(startDate);
