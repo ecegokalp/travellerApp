@@ -541,6 +541,28 @@ class AuthService {
     await _firestore.collection('users').doc(user.uid).update({'username': username});
   }
 
+  Future<void> updateBio(String bio) async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    await _firestore.collection('users').doc(uid).update({'bio': bio});
+  }
+
+  Future<void> addVisitedPlace(String field, String value) async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    await _firestore.collection('users').doc(uid).update({
+      field: FieldValue.arrayUnion([value]),
+    });
+  }
+
+  Future<void> removeVisitedPlace(String field, String value) async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    await _firestore.collection('users').doc(uid).update({
+      field: FieldValue.arrayRemove([value]),
+    });
+  }
+
   // --- In-App Notifications ---
 
   Future<void> _sendNotification({

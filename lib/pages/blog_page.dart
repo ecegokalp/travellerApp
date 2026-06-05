@@ -240,17 +240,20 @@ class _BlogPageState extends State<BlogPage> with SingleTickerProviderStateMixin
                 : const Icon(Icons.more_horiz),
           ),
           if (blog['imageUrls'] != null && (blog['imageUrls'] as List).length > 1)
-            SizedBox(
-              height: 250,
+            Container(
+              height: 340,
+              color: isDark ? Colors.black : const Color(0xFFF0ECE4),
               child: PageView.builder(
                 itemCount: (blog['imageUrls'] as List).length,
                 itemBuilder: (_, i) => Stack(
                   children: [
-                    Image.network(
-                      blog['imageUrls'][i], height: 250, width: double.infinity, fit: BoxFit.cover,
-                      errorBuilder: (_, e, s) => Container(
-                        height: 250, color: isDark ? Colors.grey[800] : Colors.grey[200],
-                        child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
+                    Positioned.fill(
+                      child: Image.network(
+                        blog['imageUrls'][i], fit: BoxFit.contain,
+                        errorBuilder: (_, e, s) => Container(
+                          color: isDark ? Colors.grey[800] : Colors.grey[200],
+                          child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
+                        ),
                       ),
                     ),
                     Positioned(
@@ -266,13 +269,11 @@ class _BlogPageState extends State<BlogPage> with SingleTickerProviderStateMixin
               ),
             )
           else if (blog['imageUrl'] != null)
-            ClipRRect(
-              child: Image.network(blog['imageUrl'], height: 250, width: double.infinity, fit: BoxFit.cover,
-                errorBuilder: (_, e, s) => Container(
-                  height: 250, width: double.infinity,
-                  color: isDark ? Colors.grey[800] : Colors.grey[200],
-                  child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
-                ),
+            Image.network(blog['imageUrl'], width: double.infinity, fit: BoxFit.fitWidth,
+              errorBuilder: (_, e, s) => Container(
+                height: 250, width: double.infinity,
+                color: isDark ? Colors.grey[800] : Colors.grey[200],
+                child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
               ),
             ),
           Padding(
