@@ -36,10 +36,14 @@ class _PlannerPageState extends State<PlannerPage> {
   PlatformFile? _pickedPlaceFile;
   PlatformFile? _pickedFlightFile;
   bool _isUploading = false;
+  bool _dirty = false;
 
   DateTime? _startDate;
   DateTime? _endDate;
   String _hotelCurrency = 'TRY';
+  DateTime? _hotelCheckIn;
+  DateTime? _hotelCheckOut;
+  String? _hotelEventId;
   String _placeCurrency = 'TRY';
   String _budgetLimitCurrency = 'TRY';
   final _budgetLimitController = TextEditingController();
@@ -48,6 +52,8 @@ class _PlannerPageState extends State<PlannerPage> {
   String? _existingFlightFileName;
   String? _existingHotelFileUrl;
   String? _existingFlightFileUrl;
+  String? _existingHotelDocId;
+  String? _existingFlightDocId;
   final _currencyService = CurrencyService();
   Map<String, double>? _rates;
 
@@ -101,6 +107,11 @@ class _PlannerPageState extends State<PlannerPage> {
     return _currencyService.convertToTRY(raw, _budgetLimitCurrency, _rates!);
   }
 
+  bool get _hotelDatesOutOfRange {
+    if (_startDate == null || _endDate == null || _hotelCheckIn == null || _hotelCheckOut == null) return false;
+    return _hotelCheckIn!.isBefore(_startDate!) || _hotelCheckOut!.isAfter(_endDate!);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -115,10 +126,15 @@ class _PlannerPageState extends State<PlannerPage> {
     _hotelNameController.text = d['hotelName'] ?? '';
     _hotelPriceController.text = (d['hotelPrice'] ?? 0).toString();
     _hotelCurrency = d['hotelCurrency'] ?? 'TRY';
+    if (d['hotelCheckIn'] != null) _hotelCheckIn = (d['hotelCheckIn'] as Timestamp).toDate();
+    if (d['hotelCheckOut'] != null) _hotelCheckOut = (d['hotelCheckOut'] as Timestamp).toDate();
+    _hotelEventId = d['hotelEventId'];
     _existingHotelFileName = d['hotelDocumentName'];
     _existingFlightFileName = d['flightDocumentName'];
     _existingHotelFileUrl = d['hotelDocumentUrl'];
     _existingFlightFileUrl = d['flightDocumentUrl'];
+    _existingHotelDocId = d['hotelDocumentId'];
+    _existingFlightDocId = d['flightDocumentId'];
     if (d['startDate'] != null) _startDate = (d['startDate'] as Timestamp).toDate();
     if (d['endDate'] != null) _endDate = (d['endDate'] as Timestamp).toDate();
     if (d['budgetLimit'] != null) _budgetLimitController.text = d['budgetLimit'].toString();
@@ -152,6 +168,7 @@ class _PlannerPageState extends State<PlannerPage> {
     );
     if (picked != null) {
       setState(() {
+        _dirty = true;
         if (isStart) {
           _startDate = picked;
           if (_endDate != null && _startDate!.isAfter(_endDate!)) {
@@ -162,6 +179,27 @@ class _PlannerPageState extends State<PlannerPage> {
           if (_startDate != null && _endDate!.isBefore(_startDate!)) {
             _startDate = null;
           }
+        }
+      });
+    }
+  }
+
+  Future<void> _pickHotelDate(bool isCheckIn) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: (isCheckIn ? _hotelCheckIn : _hotelCheckOut) ?? _startDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 1825)),
+    );
+    if (picked != null) {
+      setState(() {
+        _dirty = true;
+        if (isCheckIn) {
+          _hotelCheckIn = picked;
+          if (_hotelCheckOut != null && _hotelCheckIn!.isAfter(_hotelCheckOut!)) _hotelCheckOut = null;
+        } else {
+          _hotelCheckOut = picked;
+          if (_hotelCheckIn != null && _hotelCheckOut!.isBefore(_hotelCheckIn!)) _hotelCheckIn = null;
         }
       });
     }
@@ -370,6 +408,7 @@ class _PlannerPageState extends State<PlannerPage> {
   void _addPlace() {
     if (_placeNameController.text.isNotEmpty) {
       setState(() {
+        _dirty = true;
         _places.add({
           'name': _placeNameController.text,
           'price': double.tryParse(_placePriceController.text) ?? 0.0,
@@ -383,8 +422,122 @@ class _PlannerPageState extends State<PlannerPage> {
     }
   }
 
+  Future<bool> _confirmDeleteDoc(String label) async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete document?'),
+        content: Text('This will permanently remove the $label from your documents and calendar.', style: GoogleFonts.inter()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    return res ?? false;
+  }
+
+  Future<void> _deleteLinkedDocument(String docId, String? url) async {
+    final uid = _authService.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final docSnap = await FirebaseFirestore.instance
+          .collection('users').doc(uid).collection('personal_documents').doc(docId).get();
+      final data = docSnap.data();
+      final calId = data?['calendarEventId'] as String?;
+      final calIdReturn = data?['calendarEventIdReturn'] as String?;
+
+      for (final eid in [calId, calIdReturn]) {
+        if (eid != null) {
+          await FirebaseFirestore.instance
+              .collection('users').doc(uid).collection('calendar_events').doc(eid).delete();
+          await _notificationService.cancelEventReminders(eid);
+        }
+      }
+
+      if (url != null) {
+        try { await FirebaseStorage.instance.refFromURL(url).delete(); } catch (_) {}
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users').doc(uid).collection('personal_documents').doc(docId).delete();
+    } catch (e) {
+      debugPrint('Delete linked document error: $e');
+    }
+  }
+
+  Future<void> _removeHotelDoc() async {
+    if (_pickedHotelFile != null) {
+      setState(() { _pickedHotelFile = null; _dirty = true; });
+      return;
+    }
+    if (_existingHotelDocId == null) {
+      setState(() { _existingHotelFileName = null; _existingHotelFileUrl = null; _dirty = true; });
+      return;
+    }
+    if (!await _confirmDeleteDoc('hotel document')) return;
+    await _deleteLinkedDocument(_existingHotelDocId!, _existingHotelFileUrl);
+    if (widget.tripId != null) {
+      await FirebaseFirestore.instance
+          .collection('users').doc(_authService.currentUser!.uid).collection('trips').doc(widget.tripId)
+          .update({'hotelDocumentUrl': null, 'hotelDocumentName': null, 'hotelDocumentId': null});
+    }
+    if (mounted) {
+      setState(() {
+        _existingHotelFileName = null;
+        _existingHotelFileUrl = null;
+        _existingHotelDocId = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hotel document deleted'), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  Future<void> _removeFlightDoc() async {
+    if (_pickedFlightFile != null) {
+      setState(() { _pickedFlightFile = null; _dirty = true; });
+      return;
+    }
+    if (_existingFlightDocId == null) {
+      setState(() { _existingFlightFileName = null; _existingFlightFileUrl = null; _dirty = true; });
+      return;
+    }
+    if (!await _confirmDeleteDoc('flight ticket')) return;
+    await _deleteLinkedDocument(_existingFlightDocId!, _existingFlightFileUrl);
+    if (widget.tripId != null) {
+      await FirebaseFirestore.instance
+          .collection('users').doc(_authService.currentUser!.uid).collection('trips').doc(widget.tripId)
+          .update({'flightDocumentUrl': null, 'flightDocumentName': null, 'flightDocumentId': null});
+    }
+    if (mounted) {
+      setState(() {
+        _existingFlightFileName = null;
+        _existingFlightFileUrl = null;
+        _existingFlightDocId = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Flight document deleted'), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
   Future<void> _savePlan() async {
     if (_formKey.currentState!.validate()) {
+      if (_budgetLimitTRY > 0 && _totalBudgetTRY > _budgetLimitTRY) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+            'Over budget by ${(_totalBudgetTRY - _budgetLimitTRY).toStringAsFixed(0)} ₺. Increase your max budget or lower your expenses.',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ));
+        return;
+      }
+
       final user = _authService.currentUser;
       if (user == null) return;
 
@@ -396,24 +549,26 @@ class _PlannerPageState extends State<PlannerPage> {
       try {
         // Upload Hotel Doc
         String? hotelFileUrl = _existingHotelFileUrl;
+        String? hotelDocId = _existingHotelDocId;
         if (_pickedHotelFile != null) {
           hotelFileUrl = await _uploadFile(_pickedHotelFile!, user.uid, 'hotel_documents');
           if (hotelFileUrl != null) {
-            final docId = await _syncToPersonalDocuments(user.uid, _pickedHotelFile!.name, hotelFileUrl, _pickedHotelFile!.size);
+            hotelDocId = await _syncToPersonalDocuments(user.uid, _pickedHotelFile!.name, hotelFileUrl, _pickedHotelFile!.size);
             if (_pickedHotelFile!.path != null) {
-              _processDocumentForCalendar(File(_pickedHotelFile!.path!), _pickedHotelFile!.name, docId, user.uid);
+              _processDocumentForCalendar(File(_pickedHotelFile!.path!), _pickedHotelFile!.name, hotelDocId, user.uid);
             }
           }
         }
 
         // Upload Flight Doc
         String? flightFileUrl = _existingFlightFileUrl;
+        String? flightDocId = _existingFlightDocId;
         if (_pickedFlightFile != null) {
           flightFileUrl = await _uploadFile(_pickedFlightFile!, user.uid, 'flight_documents');
           if (flightFileUrl != null) {
-            final docId = await _syncToPersonalDocuments(user.uid, _pickedFlightFile!.name, flightFileUrl, _pickedFlightFile!.size);
+            flightDocId = await _syncToPersonalDocuments(user.uid, _pickedFlightFile!.name, flightFileUrl, _pickedFlightFile!.size);
             if (_pickedFlightFile!.path != null) {
-              _processDocumentForCalendar(File(_pickedFlightFile!.path!), _pickedFlightFile!.name, docId, user.uid);
+              _processDocumentForCalendar(File(_pickedFlightFile!.path!), _pickedFlightFile!.name, flightDocId, user.uid);
             }
           }
         }
@@ -445,16 +600,56 @@ class _PlannerPageState extends State<PlannerPage> {
           });
         }
 
+        final eventsCol = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('calendar_events');
+        if (_hotelCheckIn != null && _hotelCheckOut != null) {
+          final eventName = _hotelNameController.text.trim().isNotEmpty
+              ? _hotelNameController.text.trim()
+              : '${_cityController.text.trim()} Hotel';
+          final eventData = {
+            'name': eventName,
+            'type': 'hotel',
+            'city': _cityController.text.trim(),
+            'country': _countryController.text.trim(),
+            'startDate': Timestamp.fromDate(_hotelCheckIn!),
+            'endDate': Timestamp.fromDate(_hotelCheckOut!),
+            'source': 'manual',
+            'createdAt': FieldValue.serverTimestamp(),
+          };
+          if (_hotelEventId != null) {
+            await eventsCol.doc(_hotelEventId).set(eventData, SetOptions(merge: true));
+            await _notificationService.cancelEventReminders(_hotelEventId!);
+          } else {
+            final ref = await eventsCol.add(eventData);
+            _hotelEventId = ref.id;
+          }
+          await _notificationService.scheduleEventReminders(
+            eventId: _hotelEventId!,
+            eventName: eventName,
+            eventType: 'hotel reservation',
+            eventDate: _hotelCheckIn!,
+            city: _cityController.text.trim(),
+          );
+        } else if (_hotelEventId != null) {
+          await eventsCol.doc(_hotelEventId).delete();
+          await _notificationService.cancelEventReminders(_hotelEventId!);
+          _hotelEventId = null;
+        }
+
         final tripData = {
           'city': _cityController.text,
           'country': _countryController.text,
           'hotelName': _hotelNameController.text,
           'hotelPrice': double.tryParse(_hotelPriceController.text) ?? 0,
           'hotelCurrency': _hotelCurrency,
+          'hotelCheckIn': _hotelCheckIn != null ? Timestamp.fromDate(_hotelCheckIn!) : null,
+          'hotelCheckOut': _hotelCheckOut != null ? Timestamp.fromDate(_hotelCheckOut!) : null,
+          'hotelEventId': _hotelEventId,
           'hotelDocumentUrl': hotelFileUrl,
           'hotelDocumentName': _pickedHotelFile?.name ?? _existingHotelFileName,
+          'hotelDocumentId': hotelDocId,
           'flightDocumentUrl': flightFileUrl,
           'flightDocumentName': _pickedFlightFile?.name ?? _existingFlightFileName,
+          'flightDocumentId': flightDocId,
           'places': finalPlaces,
           'totalBudget': _totalBudget,
           'totalBudgetTRY': _totalBudgetTRY,
@@ -482,6 +677,7 @@ class _PlannerPageState extends State<PlannerPage> {
         }
 
         if (mounted) {
+          _dirty = false;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Trip plan and documents saved!')),
           );
@@ -505,7 +701,14 @@ class _PlannerPageState extends State<PlannerPage> {
     final textColor = isDarkMode ? Colors.white : const Color(0xFF1F2937);
     final cardColor = Theme.of(context).cardColor;
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final leave = await _confirmDiscard();
+        if (leave && mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Plan Your Trip'),
         actions: [
@@ -531,6 +734,7 @@ class _PlannerPageState extends State<PlannerPage> {
         children: [
           Form(
             key: _formKey,
+            onChanged: () { if (!_dirty) setState(() => _dirty = true); },
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -541,11 +745,13 @@ class _PlannerPageState extends State<PlannerPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildTextField(_cityController, 'City', Icons.location_city),
+                        child: _buildTextField(_cityController, 'City', Icons.location_city,
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildTextField(_countryController, 'Country', Icons.public),
+                        child: _buildTextField(_countryController, 'Country', Icons.public,
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
                       ),
                     ],
                   ),
@@ -583,9 +789,16 @@ class _PlannerPageState extends State<PlannerPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (_pickedFlightFile != null || _existingFlightFileName != null)
+                          IconButton(
+                            tooltip: 'Remove',
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.close_rounded, color: Colors.redAccent, size: 20),
+                            onPressed: _removeFlightDoc,
+                          ),
                         TextButton(
                           onPressed: _pickFlightFile,
-                          child: const Text('Select Ticket', style: TextStyle(color: Colors.blue)),
+                          child: Text(_pickedFlightFile != null || _existingFlightFileName != null ? 'Change' : 'Select Ticket', style: const TextStyle(color: Colors.blue)),
                         ),
                       ],
                     ),
@@ -597,12 +810,48 @@ class _PlannerPageState extends State<PlannerPage> {
                   _buildTextField(_hotelNameController, 'Hotel Name', Icons.hotel),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: _buildTextField(_hotelPriceController, 'Hotel Price', Icons.payments, isNumber: true)),
+                    Expanded(child: _buildTextField(_hotelPriceController, 'Hotel Price', Icons.payments, isNumber: true, onChanged: (_) => setState(() {}))),
                     const SizedBox(width: 8),
                     _currencyDropdown(_hotelCurrency, (v) => setState(() => _hotelCurrency = v)),
                   ]),
                   const SizedBox(height: 12),
-                  
+
+                  Row(children: [
+                    Expanded(child: _hotelDateChip('Check-in', _hotelCheckIn, true, cardColor, textColor)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _hotelDateChip('Check-out', _hotelCheckOut, false, cardColor, textColor)),
+                  ]),
+                  if (_hotelCheckIn != null && _hotelCheckOut != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text('${_hotelCheckOut!.difference(_hotelCheckIn!).inDays} nights · added to calendar',
+                          style: const TextStyle(fontSize: 13, color: _coral, fontWeight: FontWeight.w600)),
+                    ),
+                  if (_startDate != null && _endDate != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => setState(() {
+                          _hotelCheckIn = _startDate;
+                          _hotelCheckOut = _endDate;
+                          _dirty = true;
+                        }),
+                        icon: const Icon(Icons.event_repeat_rounded, size: 16, color: _coral),
+                        label: Text('Use travel dates', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: _coral)),
+                        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      ),
+                    ),
+                  if (_hotelDatesOutOfRange)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(children: [
+                        const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text('Hotel dates are outside your travel dates', style: GoogleFonts.inter(fontSize: 11, color: Colors.orange))),
+                      ]),
+                    ),
+                  const SizedBox(height: 12),
+
                   // Hotel Document Upload
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -622,14 +871,21 @@ class _PlannerPageState extends State<PlannerPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (_pickedHotelFile != null || _existingHotelFileName != null)
+                          IconButton(
+                            tooltip: 'Remove',
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.close_rounded, color: Colors.redAccent, size: 20),
+                            onPressed: _removeHotelDoc,
+                          ),
                         TextButton(
                           onPressed: _pickHotelFile,
-                          child: const Text('Select File', style: TextStyle(color: _coral)),
+                          child: Text(_pickedHotelFile != null || _existingHotelFileName != null ? 'Change' : 'Select File', style: const TextStyle(color: _coral)),
                         ),
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
                   _buildSectionTitle('Places to Visit', textColor),
                   const SizedBox(height: 12),
@@ -799,6 +1055,7 @@ class _PlannerPageState extends State<PlannerPage> {
                               onTap: () {
                                 if (_checklistController.text.trim().isNotEmpty) {
                                   setState(() {
+                                    _dirty = true;
                                     _checklist.add({'text': _checklistController.text.trim(), 'done': false});
                                     _checklistController.clear();
                                   });
@@ -857,7 +1114,7 @@ class _PlannerPageState extends State<PlannerPage> {
                   _buildSectionTitle('Budget Limit', textColor),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: _buildTextField(_budgetLimitController, 'Max Budget', Icons.account_balance_wallet, isNumber: true)),
+                    Expanded(child: _buildTextField(_budgetLimitController, 'Max Budget', Icons.account_balance_wallet, isNumber: true, onChanged: (_) => setState(() {}))),
                     const SizedBox(width: 8),
                     _currencyDropdown(_budgetLimitCurrency, (v) => setState(() => _budgetLimitCurrency = v)),
                   ]),
@@ -880,6 +1137,21 @@ class _PlannerPageState extends State<PlannerPage> {
                     ),
                     const SizedBox(height: 6),
                     Text('${_totalBudgetTRY.toStringAsFixed(0)} / ${_budgetLimitTRY.toStringAsFixed(0)} ₺', style: TextStyle(fontSize: 12, color: textColor)),
+                    if (_totalBudgetTRY > _budgetLimitTRY)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(children: [
+                          const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.red),
+                          const SizedBox(width: 4),
+                          Text('Over budget by ${(_totalBudgetTRY - _budgetLimitTRY).toStringAsFixed(0)} ₺',
+                              style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                  ],
+
+                  if (_totalBudgetTRY > 0) ...[
+                    const SizedBox(height: 24),
+                    _buildBudgetBreakdown(textColor, cardColor),
                   ],
 
                   const SizedBox(height: 40),
@@ -919,7 +1191,24 @@ class _PlannerPageState extends State<PlannerPage> {
             ),
         ],
       ),
+      ),
     );
+  }
+
+  Future<bool> _confirmDiscard() async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Discard changes?'),
+        content: const Text('You have unsaved changes. Are you sure you want to leave?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Stay', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Discard', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    return res ?? false;
   }
 
   Widget _buildSectionTitle(String title, Color color) {
@@ -929,10 +1218,12 @@ class _PlannerPageState extends State<PlannerPage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool isNumber = false}) {
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool isNumber = false, ValueChanged<String>? onChanged, String? Function(String?)? validator}) {
     return TextFormField(
       controller: controller,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+      onChanged: onChanged,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, size: 20, color: _coral),
@@ -940,6 +1231,62 @@ class _PlannerPageState extends State<PlannerPage> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
+  }
+
+  Widget _buildBudgetBreakdown(Color textColor, Color cardColor) {
+    if (_rates == null) return const SizedBox.shrink();
+    double conv(TextEditingController c, String cur) =>
+        _currencyService.convertToTRY(double.tryParse(c.text) ?? 0, cur, _rates!);
+    final placesTRY = _places.fold(0.0, (s, p) =>
+        s + _currencyService.convertToTRY((p['price'] as num?)?.toDouble() ?? 0, p['currency'] ?? 'TRY', _rates!));
+
+    final items = <Map<String, dynamic>>[
+      {'label': 'Hotel', 'icon': Icons.hotel_rounded, 'color': Colors.purple, 'amount': conv(_hotelPriceController, _hotelCurrency)},
+      {'label': 'Flight', 'icon': Icons.flight_rounded, 'color': Colors.blue, 'amount': conv(_flightController, _flightCurrency)},
+      {'label': 'Food', 'icon': Icons.restaurant_rounded, 'color': Colors.orange, 'amount': conv(_foodController, _foodCurrency)},
+      {'label': 'Transport', 'icon': Icons.directions_bus_rounded, 'color': const Color(0xFF2ECC71), 'amount': conv(_transportController, _transportCurrency)},
+      {'label': 'Places', 'icon': Icons.place_rounded, 'color': _coral, 'amount': placesTRY},
+      {'label': 'Other', 'icon': Icons.more_horiz_rounded, 'color': Colors.grey, 'amount': conv(_otherController, _otherCurrency)},
+    ]..removeWhere((e) => (e['amount'] as double) <= 0);
+
+    final total = _totalBudgetTRY;
+    if (items.isEmpty || total <= 0) return const SizedBox.shrink();
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _buildSectionTitle('Budget Breakdown', textColor),
+      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 10)]),
+        child: Column(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Row(children: items.map((e) {
+              final flex = ((e['amount'] as double) / total * 1000).round().clamp(1, 1000);
+              return Expanded(flex: flex, child: Container(height: 12, color: e['color'] as Color));
+            }).toList()),
+          ),
+          const SizedBox(height: 16),
+          ...items.map((e) {
+            final amount = e['amount'] as double;
+            final pct = amount / total * 100;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                Container(width: 10, height: 10, decoration: BoxDecoration(color: e['color'] as Color, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+                Icon(e['icon'] as IconData, size: 16, color: e['color'] as Color),
+                const SizedBox(width: 6),
+                Expanded(child: Text(e['label'] as String, style: GoogleFonts.inter(fontSize: 13, color: textColor))),
+                Text('${amount.toStringAsFixed(0)} ₺', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: textColor)),
+                const SizedBox(width: 8),
+                Text('${pct.toStringAsFixed(0)}%', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+              ]),
+            );
+          }),
+        ]),
+      ),
+    ]);
   }
 
   Widget _budgetCatRow(String label, IconData icon, TextEditingController controller, String currency, ValueChanged<String> onCurrencyChanged, Color textColor) {
@@ -977,6 +1324,21 @@ class _PlannerPageState extends State<PlannerPage> {
           const Icon(Icons.calendar_today, size: 16, color: _coral),
           const SizedBox(width: 8),
           Text('$label: ${_formatDate(date)}', style: TextStyle(fontSize: 13, color: textColor)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _hotelDateChip(String label, DateTime? date, bool isCheckIn, Color cardColor, Color textColor) {
+    return GestureDetector(
+      onTap: () => _pickHotelDate(isCheckIn),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: _coral.withAlpha(60))),
+        child: Row(children: [
+          const Icon(Icons.hotel_rounded, size: 16, color: _coral),
+          const SizedBox(width: 8),
+          Expanded(child: Text('$label: ${_formatDate(date)}', style: TextStyle(fontSize: 13, color: textColor), overflow: TextOverflow.ellipsis)),
         ]),
       ),
     );

@@ -23,6 +23,8 @@ class _HomePageState extends State<HomePage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<dynamic>> _events = {};
+  final PageController _checklistController = PageController(viewportFraction: 0.95);
+  int _checklistPage = 0;
 
   static const _accent = Color(0xFFFF6B6B);
   static const _accentLight = Color(0xFFFF8E53);
@@ -33,6 +35,12 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _checklistController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -601,7 +609,6 @@ class _HomePageState extends State<HomePage> {
     final user = _authService.currentUser;
     if (user == null) return const SizedBox.shrink();
 
-    // Get the nearest upcoming trip's checklist
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
@@ -613,105 +620,149 @@ class _HomePageState extends State<HomePage> {
         if (!snapshot.hasData) return const SizedBox.shrink();
 
         final now = DateTime.now();
-        Map<String, dynamic>? activeTrip;
-        String? activeTripId;
-
-        // Find nearest upcoming or ongoing trip with checklist
+        final trips = <Map<String, dynamic>>[];
         for (final doc in snapshot.data!.docs) {
           final data = doc.data() as Map<String, dynamic>;
           final checklist = data['checklist'] as List? ?? [];
           if (checklist.isEmpty) continue;
-
           final endDate = (data['endDate'] as Timestamp?)?.toDate();
           if (endDate != null && endDate.isBefore(now)) continue; // skip past trips
-
-          activeTrip = data;
-          activeTripId = doc.id;
-          break;
+          trips.add({'data': data, 'id': doc.id});
         }
 
-        if (activeTrip == null) return const SizedBox.shrink();
+        if (trips.isEmpty) return const SizedBox.shrink();
 
-        final checklist = (activeTrip['checklist'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        final city = activeTrip['city'] ?? '';
-        final country = activeTrip['country'] ?? '';
-        final startDate = (activeTrip['startDate'] as Timestamp?)?.toDate();
-        final doneCount = checklist.where((c) => c['done'] == true).length;
-        final total = checklist.length;
-        final progress = total > 0 ? doneCount / total : 0.0;
+        final page = _checklistPage.clamp(0, trips.length - 1);
 
-        // Days until trip
-        String? dueLabel;
-        if (startDate != null && startDate.isAfter(now)) {
-          final days = startDate.difference(now).inDays;
-          if (days <= 7) {
-            dueLabel = days == 0 ? 'Today!' : days == 1 ? 'Tomorrow' : 'In $days days';
-          }
-        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 300,
+              child: PageView.builder(
+                controller: _checklistController,
+                itemCount: trips.length,
+                onPageChanged: (i) => setState(() => _checklistPage = i),
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _buildChecklistCard(
+                    trips[i]['data'] as Map<String, dynamic>,
+                    trips[i]['id'] as String,
+                    user.uid,
+                    textColor,
+                    secondaryTextColor,
+                    isDark,
+                    cardColor,
+                  ),
+                ),
+              ),
+            ),
+            if (trips.length > 1) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(trips.length, (i) {
+                  final active = i == page;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: active ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: active ? _accent : _accent.withAlpha(60),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC), width: 0.5),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withAlpha(isDark ? 20 : 8), blurRadius: 20, offset: const Offset(0, 10)),
+  Widget _buildChecklistCard(Map<String, dynamic> tripData, String tripId, String uid, Color textColor, Color secondaryTextColor, bool isDark, Color cardColor) {
+    final now = DateTime.now();
+    final checklist = (tripData['checklist'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    final city = tripData['city'] ?? '';
+    final country = tripData['country'] ?? '';
+    final startDate = (tripData['startDate'] as Timestamp?)?.toDate();
+    final doneCount = checklist.where((c) => c['done'] == true).length;
+    final total = checklist.length;
+    final progress = total > 0 ? doneCount / total : 0.0;
+
+    String? dueLabel;
+    if (startDate != null && startDate.isAfter(now)) {
+      final days = startDate.difference(now).inDays;
+      if (days <= 7) {
+        dueLabel = days == 0 ? 'Today!' : days == 1 ? 'Tomorrow' : 'In $days days';
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE8E4DC), width: 0.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(isDark ? 20 : 8), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: _accent.withAlpha(20), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.checklist_rounded, color: _accent, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Trip Checklist', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)),
+                    if (city.isNotEmpty)
+                      Text('$city${country.isNotEmpty ? ', $country' : ''}', style: GoogleFonts.inter(fontSize: 11, color: _accent, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              Text('$doneCount/$total Done', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: secondaryTextColor)),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 50,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: isDark ? Colors.white10 : Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(progress >= 1.0 ? const Color(0xFF2ECC71) : _accent),
+                    minHeight: 6,
+                  ),
+                ),
+              ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: _accent.withAlpha(20), borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.checklist_rounded, color: _accent, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Trip Checklist', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)),
-                        if (city.isNotEmpty)
-                          Text('$city${country.isNotEmpty ? ', $country' : ''}', style: GoogleFonts.inter(fontSize: 11, color: _accent, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                  Text('$doneCount/$total Done', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: secondaryTextColor)),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 50,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: isDark ? Colors.white10 : Colors.grey[200],
-                        valueColor: AlwaysStoppedAnimation<Color>(progress >= 1.0 ? const Color(0xFF2ECC71) : _accent),
-                        minHeight: 6,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              // Checklist items
-              ...checklist.asMap().entries.map((entry) {
-                final i = entry.key;
-                final item = entry.value;
+          const SizedBox(height: 14),
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: checklist.length,
+              itemBuilder: (context, i) {
+                final item = checklist[i];
                 final isDone = item['done'] == true;
                 return GestureDetector(
                   onTap: () {
-                    // Toggle done state in Firestore
                     checklist[i]['done'] = !isDone;
                     FirebaseFirestore.instance
                         .collection('users')
-                        .doc(user.uid)
+                        .doc(uid)
                         .collection('trips')
-                        .doc(activeTripId)
+                        .doc(tripId)
                         .update({'checklist': checklist});
                   },
                   child: Container(
@@ -755,11 +806,11 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 );
-              }),
-            ],
+              },
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -773,46 +824,29 @@ class _HomePageState extends State<HomePage> {
         if (snapshot.hasData && snapshot.data!.length == 2) {
           final newEvents = <DateTime, List<dynamic>>{};
 
-          // Process trips
           for (var doc in snapshot.data![0].docs) {
             final data = doc.data() as Map<String, dynamic>;
             final startDate = (data['startDate'] as Timestamp?)?.toDate();
             final endDate = (data['endDate'] as Timestamp?)?.toDate();
             final city = data['city'] ?? 'Trip';
+            final country = data['country'] ?? '';
 
-            if (startDate != null && endDate != null) {
-              DateTime current = DateTime(startDate.year, startDate.month, startDate.day);
-              DateTime last = DateTime(endDate.year, endDate.month, endDate.day);
-
-              int safety = 0;
-              while ((current.isBefore(last) || current.isAtSameMomentAs(last)) && safety < 365) {
-                final dayKey = DateTime(current.year, current.month, current.day);
-                if (newEvents[dayKey] == null) newEvents[dayKey] = [];
-                newEvents[dayKey]!.add({
-                  'city': city,
-                  'country': data['country'] ?? '',
-                  'hotel': data['hotelName'] ?? '',
-                  'budget': data['totalBudgetTRY'] ?? 0,
-                  'id': doc.id,
-                  'data': data,
-                  'source': 'trip',
-                });
-                current = current.add(const Duration(days: 1));
-                safety++;
-              }
-            } else if (startDate != null) {
-              final dayKey = DateTime(startDate.year, startDate.month, startDate.day);
+            void addFlight(DateTime date, String leg) {
+              final dayKey = DateTime(date.year, date.month, date.day);
               if (newEvents[dayKey] == null) newEvents[dayKey] = [];
               newEvents[dayKey]!.add({
                 'city': city,
-                'country': data['country'] ?? '',
-                'hotel': data['hotelName'] ?? '',
-                'budget': data['totalBudgetTRY'] ?? 0,
+                'country': country,
+                'leg': leg,
+                'type': 'flight',
                 'id': doc.id,
                 'data': data,
-                'source': 'trip',
+                'source': 'tripFlight',
               });
             }
+
+            if (startDate != null) addFlight(startDate, 'Departure');
+            if (endDate != null) addFlight(endDate, 'Return');
           }
 
           // Process calendar events (from documents)
@@ -902,11 +936,23 @@ class _HomePageState extends State<HomePage> {
                     _focusedDay = focusedDay;
                   });
                 },
+                calendarBuilders: CalendarBuilders(
+                  markerBuilder: (context, day, events) {
+                    if (events.isEmpty) return null;
+                    return Positioned(
+                      bottom: 4,
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(color: _markerColor(events), shape: BoxShape.circle),
+                      ),
+                    );
+                  },
+                ),
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(color: _accent.withAlpha(60), shape: BoxShape.circle),
                   selectedDecoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
-                  markerDecoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
-                  markersMaxCount: 2,
+                  markersMaxCount: 1,
                   defaultTextStyle: GoogleFonts.inter(color: textColor),
                   weekendTextStyle: GoogleFonts.inter(color: textColor.withAlpha(150)),
                 ),
@@ -925,57 +971,74 @@ class _HomePageState extends State<HomePage> {
               if (_selectedDay != null && _events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] != null)
                 ...(_events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!).map((event) {
                   final e = event as Map<String, dynamic>;
-                  final isDocument = e['source'] == 'document';
-
-                  if (isDocument) {
+                  if (e['source'] == 'document') {
                     return _buildDocumentEventCard(e, textColor, secondaryTextColor);
                   }
-
-                  return Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _accent.withAlpha(10),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _accent.withAlpha(30)),
-                    ),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => TripDetailsPage(tripData: e['data'], tripId: e['id']),
-                        ));
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.location_on, size: 16, color: _accent),
-                              const SizedBox(width: 4),
-                              Text('${e['city']}, ${e['country']}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: textColor)),
-                              const Spacer(),
-                              Text('${e['budget'].toStringAsFixed(0)} ₺', style: GoogleFonts.inter(color: _accent, fontWeight: FontWeight.bold, fontSize: 12)),
-                            ],
-                          ),
-                          if (e['hotel'].isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(Icons.hotel, size: 14, color: Colors.blue),
-                                const SizedBox(width: 4),
-                                Text(e['hotel'], style: GoogleFonts.inter(fontSize: 12, color: secondaryTextColor)),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
+                  return _buildTripFlightCard(e, textColor, secondaryTextColor);
                 }),
             ],
           ),
         );
       },
+    );
+  }
+
+  Color _markerColor(List events) {
+    bool has(String type) => events.any((e) {
+      final m = e as Map<String, dynamic>;
+      final src = m['source'];
+      return (src == 'document' || src == 'tripFlight') && m['type'] == type;
+    });
+    if (has('flight')) return Colors.blue;
+    if (has('hotel')) return Colors.purple;
+    if (has('transport')) return Colors.orange;
+    if (has('ticket')) return Colors.teal;
+    return _accent;
+  }
+
+  Widget _buildTripFlightCard(Map<String, dynamic> e, Color textColor, Color secondaryTextColor) {
+    final leg = e['leg'] as String? ?? 'Flight';
+    final city = e['city'] as String? ?? '';
+    final country = e['country'] as String? ?? '';
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.withAlpha(10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.withAlpha(40)),
+      ),
+      child: InkWell(
+        onTap: e['data'] != null
+            ? () => Navigator.push(context, MaterialPageRoute(
+                builder: (_) => TripDetailsPage(tripData: e['data'], tripId: e['id'])))
+            : null,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.blue.withAlpha(20), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.flight_rounded, size: 18, color: Colors.blue),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Flight ($leg)', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                  if (city.isNotEmpty)
+                    Text('$city${country.isNotEmpty ? ', $country' : ''}', style: GoogleFonts.inter(fontSize: 11, color: secondaryTextColor)),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: Colors.blue.withAlpha(20), borderRadius: BorderRadius.circular(8)),
+              child: Text(leg, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.blue)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
