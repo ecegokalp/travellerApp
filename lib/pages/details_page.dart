@@ -74,15 +74,7 @@ class DestinationDetailPage extends StatelessWidget {
                                 final parts = destination['title']!.split(', ');
                                 final city = parts[0];
                                 final country = parts.length > 1 ? parts[1] : '';
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => BlogPage(
-                                      initialCity: city,
-                                      initialCountry: country,
-                                    ),
-                                  ),
-                                );
+                                showCreateStorySheet(context, initialCity: city, initialCountry: country);
                               }),
                               const SizedBox(width: 10),
                               _glassBtn(Icons.ios_share_rounded, () {}),

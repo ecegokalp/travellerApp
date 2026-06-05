@@ -543,15 +543,7 @@ class _MapExplorePageState extends State<MapExplorePage> {
   }
 
   void _shareStory(PlaceModel place) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BlogPage(
-          initialCity: place.city,
-          initialCountry: place.country,
-        ),
-      ),
-    );
+    showCreateStorySheet(context, initialCity: place.city, initialCountry: place.country);
   }
 
   void _showLikedSheet(Map<String, dynamic> p) {
@@ -677,16 +669,9 @@ class _PlaceDetailSheetState extends State<_PlaceDetailSheet> {
               ),
               TextButton.icon(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BlogPage(
-                        initialCity: p.city,
-                        initialCountry: p.country,
-                      ),
-                    ),
-                  );
+                  final nav = Navigator.of(context);
+                  nav.pop();
+                  showCreateStorySheet(nav.context, initialCity: p.city, initialCountry: p.country);
                 },
                 icon: const Icon(Icons.edit_note_rounded, size: 20, color: _coral),
                 label: Text('Share Story',

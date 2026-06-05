@@ -433,7 +433,7 @@ class _HomePageState extends State<HomePage> {
                                     const Spacer(),
                                     GestureDetector(
                                       onTap: () {
-                                        Navigator.push(context, MaterialPageRoute(builder: (_) => BlogPage(initialCity: city, initialCountry: country)));
+                                        showCreateStorySheet(context, initialCity: city, initialCountry: country);
                                       },
                                       child: Container(
                                         padding: const EdgeInsets.all(6),

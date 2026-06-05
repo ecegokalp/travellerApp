@@ -103,7 +103,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
             onPressed: () {
               final city = widget.tripData['city'];
               final country = widget.tripData['country'];
-              Navigator.push(context, MaterialPageRoute(builder: (_) => BlogPage(initialCity: city, initialCountry: country)));
+              showCreateStorySheet(context, initialCity: city, initialCountry: country);
             },
           ),
           if (widget.tripId != null) ...[
