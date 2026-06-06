@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -177,19 +178,23 @@ class _MapExplorePageState extends State<MapExplorePage> {
   }
 
   void _focusCurrentCard() {
-    if (_cardIdx < _filtered.length) {
-      final place = _filtered[_cardIdx];
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          const targetZoom = 16.0;
-          // At zoom 16, roughly 0.005 degree offset pushes marker above cards
-          _mapController.move(
-            LatLng(place.latitude + 0.003, place.longitude),
-            targetZoom,
-          );
-        }
-      });
-    }
+    if (_cardIdx >= _filtered.length) return;
+    final place = _filtered[_cardIdx];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      const zoom = 16.0;
+      final screenH = MediaQuery.of(context).size.height;
+      final cardTop = screenH * 0.5 - 140;
+      final targetY = cardTop * 0.72;
+      final pixelsAboveCentre = (screenH * 0.5) - targetY;
+      final latDelta = _pixelsToLatDelta(pixelsAboveCentre, zoom, place.latitude);
+      _mapController.move(LatLng(place.latitude - latDelta, place.longitude), zoom);
+    });
+  }
+
+  double _pixelsToLatDelta(double pixels, double zoom, double lat) {
+    final metersPerPixel = 156543.03392 * math.cos(lat * math.pi / 180) / math.pow(2, zoom);
+    return (pixels * metersPerPixel) / 111320.0;
   }
 
   @override
@@ -263,20 +268,56 @@ class _MapExplorePageState extends State<MapExplorePage> {
             );
           }).toList()),
         if (_showSwiper && _filtered.isNotEmpty && _cardIdx < _filtered.length)
-          MarkerLayer(markers: [
-            Marker(
-              point: LatLng(_filtered[_cardIdx].latitude, _filtered[_cardIdx].longitude),
-              width: 30, height: 30,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _orange, shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2.5),
-                ),
-                child: const Icon(Icons.place_rounded, color: Colors.white, size: 14),
-              ),
-            ),
-          ]),
+          MarkerLayer(markers: [_currentPlaceMarker(_filtered[_cardIdx])]),
       ],
+    );
+  }
+
+  Marker _currentPlaceMarker(PlaceModel place) {
+    return Marker(
+      point: LatLng(place.latitude, place.longitude),
+      width: 240,
+      height: 120,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            bottom: 82,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [BoxShadow(color: Colors.black.withAlpha(45), blurRadius: 10, offset: const Offset(0, 4))],
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.location_on_rounded, size: 14, color: _coral),
+                const SizedBox(width: 4),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 170),
+                  child: Text(
+                    place.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF1F2937)),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+          Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [_coral, _orange]),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [BoxShadow(color: _coral.withAlpha(120), blurRadius: 10, spreadRadius: 1)],
+            ),
+            child: const Icon(Icons.place_rounded, color: Colors.white, size: 16),
+          ),
+        ],
+      ),
     );
   }
 
