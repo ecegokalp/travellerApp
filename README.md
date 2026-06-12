@@ -1,5 +1,3 @@
-README - Traveller App
-
 1-Requirements
 
 To run this app on your computer, you need the tools below:
