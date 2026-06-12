@@ -588,35 +588,42 @@ class _MapExplorePageState extends State<MapExplorePage> {
 
   void _showLikedSheet(Map<String, dynamic> p) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final txt = isDark ? Colors.white : const Color(0xFF1F2937);
+    final place = PlaceModel(
+      id: p['id'] as String,
+      name: p['name'] as String? ?? '',
+      category: p['category'] as String? ?? 'other',
+      latitude: (p['latitude'] as num).toDouble(),
+      longitude: (p['longitude'] as num).toDouble(),
+      imageUrl: p['imageUrl'] as String?,
+      city: p['city'] as String? ?? '',
+      country: p['country'] as String? ?? '',
+    );
     showModalBottomSheet(context: context, backgroundColor: isDark ? const Color(0xFF1E1E2E) : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+      builder: (sheetContext) => Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 24), child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withAlpha(50), borderRadius: BorderRadius.circular(2))),
-        const SizedBox(height: 20),
-        Row(children: [
-          Container(width: 44, height: 44, decoration: BoxDecoration(gradient: const LinearGradient(colors: [_coral, _orange]), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 22)),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(p['name'] ?? '', style: GoogleFonts.playfairDisplay(fontSize: 17, fontWeight: FontWeight.bold, color: txt)),
-            Text('${p['city'] ?? ''} · ${p['category'] ?? ''}', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
-          ])),
-        ]),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
+        SizedBox(height: 240, width: double.infinity, child: PlaceSwipeCard(place: place)),
+        const SizedBox(height: 16),
         Row(children: [
           Expanded(child: OutlinedButton.icon(
-            onPressed: () { _mapController.move(LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble()), 16); Navigator.pop(context); setState(() => _showSwiper = false); },
+            onPressed: () { _mapController.move(LatLng(place.latitude, place.longitude), 16); Navigator.pop(sheetContext); setState(() => _showSwiper = false); },
             icon: const Icon(Icons.center_focus_strong_rounded, size: 16), label: const Text('Focus'),
             style: OutlinedButton.styleFrom(foregroundColor: _coral, side: const BorderSide(color: _coral), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)),
           )),
           const SizedBox(width: 12),
           Expanded(child: ElevatedButton.icon(
-            onPressed: () { _placeService.unlikePlace(p['id']); Navigator.pop(context); },
-            icon: const Icon(Icons.delete_outline_rounded, size: 16), label: const Text('Remove'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade400, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12), elevation: 0),
+            onPressed: () { Navigator.pop(sheetContext); _showPlaceDetail(place); },
+            icon: const Icon(Icons.info_outline_rounded, size: 16), label: const Text('Details'),
+            style: ElevatedButton.styleFrom(backgroundColor: _coral, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12), elevation: 0),
           )),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
+        TextButton.icon(
+          onPressed: () { _placeService.unlikePlace(p['id']); Navigator.pop(sheetContext); },
+          icon: const Icon(Icons.favorite_rounded, size: 16, color: Colors.red),
+          label: Text('Remove from saved', style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 13)),
+        ),
       ])),
     );
   }
