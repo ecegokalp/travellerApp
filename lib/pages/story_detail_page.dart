@@ -188,7 +188,7 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
               images.first,
               width: double.infinity,
               fit: BoxFit.fitWidth,
-              errorBuilder: (_, __, ___) => Container(height: 250, color: isDark ? Colors.grey[800] : Colors.grey[200], child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey)),
+              errorBuilder: (_, _, _) => Container(height: 250, color: isDark ? Colors.grey[800] : Colors.grey[200], child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey)),
             )
           else if (images.length > 1)
             Container(
@@ -202,7 +202,7 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                       child: Image.network(
                         images[i],
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Container(color: isDark ? Colors.grey[800] : Colors.grey[200], child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey)),
+                        errorBuilder: (_, _, _) => Container(color: isDark ? Colors.grey[800] : Colors.grey[200], child: const Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey)),
                       ),
                     ),
                     Positioned(

@@ -276,7 +276,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             const SizedBox(height: 20),
                             Text(
-                              'Ready to\nExplore?',
+                              'Plan Your\nTrip',
                               style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15),
                             ),
                             const SizedBox(height: 10),

@@ -19,7 +19,6 @@ class UserListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(

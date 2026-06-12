@@ -174,7 +174,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   _buildSettingTile(context, icon: Icons.notifications_none_rounded, title: 'Notifications',
                     trailing: Switch.adaptive(
                       value: _notificationsEnabled,
-                      activeColor: _accent,
+                      activeThumbColor: _accent,
                       onChanged: (value) => setState(() => _notificationsEnabled = value),
                     ),
                   ),
@@ -182,7 +182,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   _buildSettingTile(context, icon: Icons.dark_mode_outlined, title: 'Dark Mode',
                     trailing: Switch.adaptive(
                       value: isDark,
-                      activeColor: _accent,
+                      activeThumbColor: _accent,
                       onChanged: (value) => themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light,
                     ),
                   ),
@@ -227,7 +227,8 @@ class _SettingsPageState extends State<SettingsPage> {
               child: OutlinedButton(
                 onPressed: () async {
                   await _authService.signOut();
-                  if (mounted) Navigator.pop(context);
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
                 },
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -334,7 +335,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 onPressed: () async {
                   await _authService.updateUsername(usernameController.text);
                   setState(() => _username = usernameController.text);
-                  if (mounted) Navigator.pop(context);
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: _accent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                 child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),

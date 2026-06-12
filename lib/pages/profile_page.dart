@@ -32,7 +32,6 @@ class _ProfilePageState extends State<ProfilePage> {
   int _followerCount = 0;
   int _followingCount = 0;
   bool _isFollowing = false;
-  bool _isLoading = true;
 
   String get _effectiveUserId => widget.userId ?? _authService.currentUser?.uid ?? '';
   bool get _isMe => _effectiveUserId == _authService.currentUser?.uid;
@@ -68,7 +67,6 @@ class _ProfilePageState extends State<ProfilePage> {
         _manualCities = List<String>.from(profile?['visitedCities'] ?? const []);
         _followerCount = profile?['followerCount'] ?? 0;
         _followingCount = profile?['followingCount'] ?? 0;
-        _isLoading = false;
       });
     }
 
@@ -449,7 +447,7 @@ class _ProfilePageState extends State<ProfilePage> {
           return Container(
             padding: const EdgeInsets.all(40),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor.withOpacity(0.5),
+              color: Theme.of(context).cardColor.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Center(
@@ -672,7 +670,7 @@ class _VisitedPlacesPageState extends State<_VisitedPlacesPage> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                     itemCount: names.length,
-                    separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withAlpha(30)),
+                    separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.withAlpha(30)),
                     itemBuilder: (_, i) {
                       final name = names[i];
                       final fromBlog = widget.blogPlaces.contains(name);

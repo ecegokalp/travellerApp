@@ -87,6 +87,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     final budgetLimit = _rates != null ? _currencyService.convertToTRY(budgetLimitRaw, budgetLimitCurrency, _rates!) : budgetLimitRaw;
     final List<dynamic> places = d['places'] ?? [];
     final List<dynamic> checklist = d['checklist'] ?? [];
+    final List<dynamic> itinerary = d['itinerary'] ?? [];
     final budgetCats = d['budgetCategories'] as Map<String, dynamic>?;
     final hasStart = d['startDate'] != null;
     final hasEnd = d['endDate'] != null;
@@ -250,6 +251,51 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                   ),
                 );
               }),
+            ],
+
+            // ── Itinerary ──
+            if (itinerary.isNotEmpty) ...[
+              _section('Day-by-Day Itinerary', Icons.event_note_rounded, textColor),
+              const SizedBox(height: 12),
+              ...itinerary.map((dayRaw) {
+                final day = dayRaw as Map<String, dynamic>;
+                final activities = (day['activities'] as List<dynamic>? ?? []);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 10)]),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Day ${day['day']}: ${day['title'] ?? ''}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: textColor)),
+                      const SizedBox(height: 10),
+                      ...activities.map((aRaw) {
+                        final a = aRaw as Map<String, dynamic>;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(width: 52, child: Text(a['time'] ?? '', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: _coral))),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(a['activity'] ?? '', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: textColor)),
+                                    if ((a['description'] ?? '').toString().isNotEmpty)
+                                      Text(a['description'], style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 24),
             ],
 
             // ── Checklist ──

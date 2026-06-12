@@ -10,7 +10,6 @@ class DestinationDetailPage extends StatelessWidget {
   const DestinationDetailPage({super.key, required this.destination});
 
   static const _accent = Color(0xFFFF6B6B);
-  static const _accentLight = Color(0xFFFF8E53);
   static const _darkText = Color(0xFF1F2937);
   static const _warmGray = Color(0xFF6B7280);
 
@@ -39,8 +38,8 @@ class DestinationDetailPage extends StatelessWidget {
                         height: 420,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(height: 420, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                        errorWidget: (_, __, ___) => Container(height: 420, color: Colors.grey[300], child: const Icon(Icons.image_not_supported, size: 48)),
+                        placeholder: (_, _) => Container(height: 420, color: isDark ? Colors.grey[800] : Colors.grey[200]),
+                        errorWidget: (_, _, _) => Container(height: 420, color: Colors.grey[300], child: const Icon(Icons.image_not_supported, size: 48)),
                       ),
                     ),
                     // 4-stop gradient overlay

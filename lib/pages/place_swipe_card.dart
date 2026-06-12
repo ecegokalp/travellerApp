@@ -40,8 +40,8 @@ class _PlaceSwipeCardState extends State<PlaceSwipeCard> {
               CachedNetworkImage(
                 imageUrl: place.displayImage,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => _gradient(place),
-                errorWidget: (_, __, ___) => _gradient(place),
+                placeholder: (_, _) => _gradient(place),
+                errorWidget: (_, _, _) => _gradient(place),
               ),
 
             // Dark gradient overlay

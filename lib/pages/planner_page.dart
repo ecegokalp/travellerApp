@@ -64,6 +64,10 @@ class _PlannerPageState extends State<PlannerPage> {
   final NotificationService _notificationService = NotificationService();
   bool _checklistLoading = false;
 
+  // Day-by-day itinerary
+  final List<Map<String, dynamic>> _itinerary = [];
+  bool _itineraryLoading = false;
+
   // Budget categories
   final _flightController = TextEditingController();
   String _flightCurrency = 'TRY';
@@ -80,7 +84,7 @@ class _PlannerPageState extends State<PlannerPage> {
 
   double get _totalBudget {
     double hotelPrice = double.tryParse(_hotelPriceController.text) ?? 0;
-    double placesPrice = _places.fold(0.0, (sum, item) => sum + ((item['price'] as num?)?.toDouble() ?? 0));
+    double placesPrice = _places.fold(0.0, (total, item) => total + ((item['price'] as num?)?.toDouble() ?? 0));
     double flight = double.tryParse(_flightController.text) ?? 0;
     double food = double.tryParse(_foodController.text) ?? 0;
     double transport = double.tryParse(_transportController.text) ?? 0;
@@ -92,8 +96,8 @@ class _PlannerPageState extends State<PlannerPage> {
     if (_rates == null) return _totalBudget;
     double hotel = _currencyService.convertToTRY(
       double.tryParse(_hotelPriceController.text) ?? 0, _hotelCurrency, _rates!);
-    double places = _places.fold(0.0, (sum, p) =>
-      sum + _currencyService.convertToTRY((p['price'] as num?)?.toDouble() ?? 0, p['currency'] ?? 'TRY', _rates!));
+    double places = _places.fold(0.0, (total, p) =>
+      total + _currencyService.convertToTRY((p['price'] as num?)?.toDouble() ?? 0, p['currency'] ?? 'TRY', _rates!));
     double flight = _currencyService.convertToTRY(double.tryParse(_flightController.text) ?? 0, _flightCurrency, _rates!);
     double food = _currencyService.convertToTRY(double.tryParse(_foodController.text) ?? 0, _foodCurrency, _rates!);
     double transport = _currencyService.convertToTRY(double.tryParse(_transportController.text) ?? 0, _transportCurrency, _rates!);
@@ -151,6 +155,17 @@ class _PlannerPageState extends State<PlannerPage> {
     }
     for (var item in (d['checklist'] ?? [])) {
       _checklist.add({'text': item['text'] ?? '', 'done': item['done'] ?? false});
+    }
+    for (var day in (d['itinerary'] ?? [])) {
+      _itinerary.add({
+        'day': day['day'] ?? 1,
+        'title': day['title'] ?? '',
+        'activities': List<Map<String, dynamic>>.from((day['activities'] ?? []).map((a) => {
+          'time': a['time'] ?? '',
+          'activity': a['activity'] ?? '',
+          'description': a['description'] ?? '',
+        })),
+      });
     }
   }
 
@@ -256,15 +271,15 @@ class _PlannerPageState extends State<PlannerPage> {
       debugPrint('Gemini extracted (planner): $extracted');
       if (extracted == null) return;
 
-      String? _str(dynamic v) => v is String ? v : v is List ? v.firstOrNull?.toString() : v?.toString();
-      final name = _str(extracted['name']) ?? fileName;
-      final city = _str(extracted['city']);
-      final country = _str(extracted['country']);
-      final startDateStr = _str(extracted['startDate']);
-      final endDateStr = _str(extracted['endDate']);
+      String? str(dynamic v) => v is String ? v : v is List ? v.firstOrNull?.toString() : v?.toString();
+      final name = str(extracted['name']) ?? fileName;
+      final city = str(extracted['city']);
+      final country = str(extracted['country']);
+      final startDateStr = str(extracted['startDate']);
+      final endDateStr = str(extracted['endDate']);
 
       String eventType = 'travel';
-      final geminiType = _str(extracted['type'])?.toLowerCase() ?? '';
+      final geminiType = str(extracted['type'])?.toLowerCase() ?? '';
       final lowerName = '${fileName.toLowerCase()} ${name.toLowerCase()} $geminiType';
 
       const airlines = ['sunexpress', 'sun express', 'thy', 'turkish airlines', 'türk hava',
@@ -664,6 +679,7 @@ class _PlannerPageState extends State<PlannerPage> {
           'startDate': _startDate != null ? Timestamp.fromDate(_startDate!) : null,
           'endDate': _endDate != null ? Timestamp.fromDate(_endDate!) : null,
           'checklist': _checklist.map((item) => {'text': item['text'], 'done': item['done']}).toList(),
+          'itinerary': _itinerary,
         };
 
         final tripsRef = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('trips');
@@ -706,7 +722,8 @@ class _PlannerPageState extends State<PlannerPage> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final leave = await _confirmDiscard();
-        if (leave && mounted) Navigator.pop(context);
+        if (!context.mounted) return;
+        if (leave) Navigator.pop(context);
       },
       child: Scaffold(
       appBar: AppBar(
@@ -718,7 +735,7 @@ class _PlannerPageState extends State<PlannerPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _coral.withOpacity(0.2),
+                  color: _coral.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -776,7 +793,7 @@ class _PlannerPageState extends State<PlannerPage> {
                     decoration: BoxDecoration(
                       color: cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -858,7 +875,7 @@ class _PlannerPageState extends State<PlannerPage> {
                     decoration: BoxDecoration(
                       color: cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _coral.withOpacity(0.3)),
+                      border: Border.all(color: _coral.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -912,7 +929,7 @@ class _PlannerPageState extends State<PlannerPage> {
                             Expanded(
                               child: Text(
                                 _pickedPlaceFile?.name ?? 'Optional document',
-                                style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13),
+                                style: TextStyle(color: textColor.withValues(alpha: 0.6), fontSize: 13),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -968,6 +985,101 @@ class _PlannerPageState extends State<PlannerPage> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Day-by-day itinerary
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSectionTitle('Day-by-Day Itinerary', textColor),
+                      GestureDetector(
+                        onTap: _itineraryLoading ? null : _generateItinerary,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _coral.withAlpha(20),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: _itineraryLoading
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _coral))
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.auto_awesome, size: 16, color: _coral),
+                                    const SizedBox(width: 4),
+                                    Text(_itinerary.isEmpty ? 'Generate with AI' : 'Regenerate', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: _coral)),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (_itinerary.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        'Set your travel dates and tap "Generate with AI" for a day-by-day plan.',
+                        style: GoogleFonts.inter(fontSize: 13, color: textColor.withValues(alpha: 0.6)),
+                      ),
+                    )
+                  else
+                    ...List.generate(_itinerary.length, (i) {
+                      final day = _itinerary[i];
+                      final activities = (day['activities'] as List).cast<Map<String, dynamic>>();
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text('Day ${day['day']}: ${day['title']}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: textColor)),
+                                ),
+                                GestureDetector(
+                                  onTap: () => setState(() {
+                                    _dirty = true;
+                                    _itinerary.removeAt(i);
+                                  }),
+                                  child: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            ...activities.map((a) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(width: 52, child: Text(a['time'] ?? '', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: _coral))),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(a['activity'] ?? '', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: textColor)),
+                                        if ((a['description'] ?? '').toString().isNotEmpty)
+                                          Text(a['description'], style: GoogleFonts.inter(fontSize: 12, color: textColor.withValues(alpha: 0.6))),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )),
+                          ],
+                        ),
+                      );
+                    }),
+                  const SizedBox(height: 24),
+
                   // Checklist
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -996,11 +1108,10 @@ class _PlannerPageState extends State<PlannerPage> {
                               });
                             }
                           } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('AI suggestion failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
-                              );
-                            }
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('AI suggestion failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+                            );
                           } finally {
                             if (mounted) setState(() => _checklistLoading = false);
                           }
@@ -1041,7 +1152,7 @@ class _PlannerPageState extends State<PlannerPage> {
                                 controller: _checklistController,
                                 decoration: InputDecoration(
                                   hintText: 'Add item (e.g. Pack passport)',
-                                  hintStyle: TextStyle(color: textColor.withOpacity(0.4), fontSize: 14),
+                                  hintStyle: TextStyle(color: textColor.withValues(alpha: 0.4), fontSize: 14),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                                   filled: true,
                                   fillColor: isDarkMode ? Colors.white.withAlpha(8) : Colors.grey.withAlpha(20),
@@ -1177,7 +1288,7 @@ class _PlannerPageState extends State<PlannerPage> {
           ),
           if (_isUploading)
             Container(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1193,6 +1304,65 @@ class _PlannerPageState extends State<PlannerPage> {
       ),
       ),
     );
+  }
+
+  Future<void> _generateItinerary() async {
+    final country = _countryController.text.trim();
+    final city = _cityController.text.trim();
+    if (country.isEmpty && city.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Enter a destination first', style: GoogleFonts.inter(fontWeight: FontWeight.w600)), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+      );
+      return;
+    }
+    if (_startDate == null || _endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Set your travel dates first', style: GoogleFonts.inter(fontWeight: FontWeight.w600)), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+      );
+      return;
+    }
+
+    final days = (_endDate!.difference(_startDate!).inDays + 1).clamp(1, 14);
+    setState(() => _itineraryLoading = true);
+    String? errorMessage;
+    try {
+      final plan = await _geminiService.generateItinerary(
+        country: country.isNotEmpty ? country : 'World',
+        city: city.isNotEmpty ? city : 'Trip',
+        days: days,
+        places: _places.map((p) => p['name'] as String).toList(),
+      );
+      if (plan != null) {
+        if (mounted) {
+          setState(() {
+            _dirty = true;
+            _itinerary
+              ..clear()
+              ..addAll(plan.map((day) => {
+                'day': day['day'] ?? 1,
+                'title': day['title'] ?? '',
+                'activities': List<Map<String, dynamic>>.from((day['activities'] ?? []).map((a) => {
+                  'time': a['time'] ?? '',
+                  'activity': a['activity'] ?? '',
+                  'description': a['description'] ?? '',
+                })),
+              }));
+          });
+        }
+      } else {
+        errorMessage = 'Could not generate itinerary, try again';
+      }
+    } catch (e) {
+      errorMessage = 'AI suggestion failed: $e';
+    } finally {
+      if (mounted) setState(() => _itineraryLoading = false);
+    }
+
+    if (errorMessage != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage, style: GoogleFonts.inter(fontWeight: FontWeight.w600)), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+      );
+    }
   }
 
   Future<bool> _confirmDiscard() async {

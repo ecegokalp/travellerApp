@@ -230,16 +230,16 @@ class _DocumentsPageState extends State<DocumentsPage> {
       debugPrint('Gemini extracted: $extracted');
       if (extracted == null) return;
 
-      String? _str(dynamic v) => v is String ? v : v is List ? v.firstOrNull?.toString() : v?.toString();
-      final name = _str(extracted['name']) ?? fileName;
-      final city = _str(extracted['city']);
-      final country = _str(extracted['country']);
-      final startDateStr = _str(extracted['startDate']);
-      final endDateStr = _str(extracted['endDate']);
+      String? str(dynamic v) => v is String ? v : v is List ? v.firstOrNull?.toString() : v?.toString();
+      final name = str(extracted['name']) ?? fileName;
+      final city = str(extracted['city']);
+      final country = str(extracted['country']);
+      final startDateStr = str(extracted['startDate']);
+      final endDateStr = str(extracted['endDate']);
 
       // Determine event type from file name, extracted name, and Gemini type hint
       String eventType = 'travel';
-      final geminiType = _str(extracted['type'])?.toLowerCase() ?? '';
+      final geminiType = str(extracted['type'])?.toLowerCase() ?? '';
       final lowerName = '${fileName.toLowerCase()} ${name.toLowerCase()} $geminiType';
 
       // Airlines list for auto-detecting flights

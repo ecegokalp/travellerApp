@@ -13,7 +13,6 @@ import '../models/review_model.dart';
 import '../services/place_service.dart';
 import 'place_swipe_card.dart';
 import 'blog_page.dart';
-import 'package:flutter/foundation.dart';
 
 class MapExplorePage extends StatefulWidget {
   const MapExplorePage({super.key});
@@ -227,7 +226,7 @@ class _MapExplorePageState extends State<MapExplorePage> {
       options: MapOptions(
         initialCenter: _userLoc ?? const LatLng(41.0082, 28.9784),
         initialZoom: 12,
-        onTap: (_, __) {
+        onTap: (_, _) {
           if (_showSearch) setState(() => _showSearch = false);
         },
       ),
@@ -374,7 +373,7 @@ class _MapExplorePageState extends State<MapExplorePage> {
             : ListView.separated(
                 shrinkWrap: true, padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: _searchResults.length,
-                separatorBuilder: (_, __) => Divider(height: 1, indent: 56, color: Colors.grey.withAlpha(20)),
+                separatorBuilder: (_, _) => Divider(height: 1, indent: 56, color: Colors.grey.withAlpha(20)),
                 itemBuilder: (_, i) {
                   final c = _searchResults[i];
                   return ListTile(
@@ -443,7 +442,7 @@ class _MapExplorePageState extends State<MapExplorePage> {
             margin: const EdgeInsets.fromLTRB(20, 0, 20, 100),
           ));
         },
-        cardBuilder: (_, index, rawX, __) {
+        cardBuilder: (_, index, rawX, _) {
           final tx = rawX.toDouble() / 100.0;
           final place = _filtered[index];
           return GestureDetector(

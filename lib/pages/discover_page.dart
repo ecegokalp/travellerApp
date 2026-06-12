@@ -215,8 +215,8 @@ class _DiscoverPageState extends State<DiscoverPage> {
               CachedNetworkImage(
                 imageUrl: d['image']!,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                errorWidget: (_, __, ___) => Container(color: isDark ? Colors.grey[800] : Colors.grey[200], child: const Icon(Icons.image_not_supported_outlined)),
+                placeholder: (_, _) => Container(color: isDark ? Colors.grey[800] : Colors.grey[200]),
+                errorWidget: (_, _, _) => Container(color: isDark ? Colors.grey[800] : Colors.grey[200], child: const Icon(Icons.image_not_supported_outlined)),
               ),
               Container(
                 decoration: BoxDecoration(

@@ -138,6 +138,51 @@ class GeminiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>?> generateItinerary({
+    required String country,
+    required String city,
+    required int days,
+    List<String> places = const [],
+  }) async {
+    try {
+      await _ensureInitialized();
+      if (_model == null) return null;
+
+      final placesText = places.isNotEmpty
+          ? 'Make sure to include these places the traveler wants to visit, spread naturally across the days: ${places.join(', ')}. '
+          : '';
+
+      final response = await _model!.generateContent([
+        Content.text(
+          'Create a detailed day-by-day travel itinerary for a $days-day trip to $city, $country. '
+          '$placesText'
+          'Return ONLY a JSON array with $days objects, one per day, in this exact format: '
+          '[{"day": 1, "title": "Short theme for the day", "activities": '
+          '[{"time": "09:00", "activity": "Short activity name", "description": "One sentence description"}]}]. '
+          'Each day should have 3-5 activities including meals, spread from morning to evening. '
+          'Return ONLY the JSON array, no explanation, no markdown.',
+        ),
+      ]);
+
+      final text = response.text;
+      if (text == null) return null;
+
+      String cleaned = text.trim();
+      if (cleaned.contains('```')) {
+        cleaned = cleaned.replaceAll(RegExp(r'```json|```'), '').trim();
+      }
+      final match = RegExp(r'\[.*\]', dotAll: true).firstMatch(cleaned);
+      if (match != null) {
+        final list = jsonDecode(match.group(0)!) as List;
+        return list.cast<Map<String, dynamic>>();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Gemini Itinerary Error: $e');
+      return null;
+    }
+  }
+
   Map<String, dynamic>? _parseJson(String? text) {
     if (text == null) return null;
     try {
