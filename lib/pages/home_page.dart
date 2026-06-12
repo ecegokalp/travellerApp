@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import 'settings_page.dart';
 import 'planner_page.dart';
@@ -26,20 +27,35 @@ class _HomePageState extends State<HomePage> {
   final PageController _checklistController = PageController(viewportFraction: 0.95);
   int _checklistPage = 0;
 
-  static const _accent = Color(0xFFFF6B6B);
-  static const _accentLight = Color(0xFFFF8E53);
+  int _heroImageIndex = 0;
+  Timer? _heroImageTimer;
+
+  static const _accent = Color(0xFF0D9488);
+  static const _accentLight = Color(0xFF2DD4BF);
   static const _warmGray = Color(0xFF6B7280);
   static const _darkText = Color(0xFF1F2937);
+
+  static const _heroImages = [
+    'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=85',
+    'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&q=85',
+    'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=1200&q=85',
+    'https://images.unsplash.com/photo-1555400038-63f5ba517a47?w=1200&q=85',
+    'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1200&q=85',
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _heroImageTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) setState(() => _heroImageIndex = (_heroImageIndex + 1) % _heroImages.length);
+    });
   }
 
   @override
   void dispose() {
     _checklistController.dispose();
+    _heroImageTimer?.cancel();
     super.dispose();
   }
 
@@ -237,52 +253,83 @@ class _HomePageState extends State<HomePage> {
                       },
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(28),
+                        clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53), Color(0xFFFFAA85)],
-                          ),
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(color: _accent.withAlpha(60), blurRadius: 24, offset: const Offset(0, 12)),
                           ],
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Stack(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withAlpha(40),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: Colors.white.withAlpha(30)),
+                            Positioned.fill(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 1200),
+                                child: SizedBox.expand(
+                                  key: ValueKey(_heroImages[_heroImageIndex]),
+                                  child: CachedNetworkImage(
+                                    imageUrl: _heroImages[_heroImageIndex],
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, p1) => Container(color: _accent),
+                                    errorWidget: (_, e1, e2) => Container(color: _accent),
                                   ),
-                                  child: const Icon(Icons.flight_takeoff_rounded, size: 28, color: Colors.white),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withAlpha(30),
-                                    shape: BoxShape.circle,
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.black.withAlpha(70),
+                                      Colors.black.withAlpha(40),
+                                      Colors.black.withAlpha(140),
+                                    ],
                                   ),
-                                  child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
                                 ),
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: 20),
-                            Text(
-                              'Plan Your\nTrip',
-                              style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Plan your next adventure.\nSave hotels, places and track your budget.',
-                              style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withAlpha(210), height: 1.5),
+                            Padding(
+                              padding: const EdgeInsets.all(28),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withAlpha(40),
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(color: Colors.white.withAlpha(30)),
+                                        ),
+                                        child: const Icon(Icons.flight_takeoff_rounded, size: 28, color: Colors.white),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withAlpha(30),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    'Plan Your\nTrip',
+                                    style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Plan your next adventure.\nSave hotels, places and track your budget.',
+                                    style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withAlpha(210), height: 1.5),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -377,7 +424,7 @@ class _HomePageState extends State<HomePage> {
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                          colors: [Color(0xFF0D9488), Color(0xFF2DD4BF)],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [BoxShadow(color: _accent.withAlpha(40), blurRadius: 12, offset: const Offset(0, 6))],

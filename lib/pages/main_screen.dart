@@ -28,7 +28,7 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  static const _sunset = Color(0xFFFF6B6B);
+  static const _sunset = Color(0xFF0D9488);
 
   static const _icons = <List<IconData>>[
     [Icons.home_rounded, Icons.home_outlined],

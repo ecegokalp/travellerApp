@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFFF6B6B),
+              seedColor: const Color(0xFF0D9488),
               brightness: Brightness.light,
             ),
             scaffoldBackgroundColor: const Color(0xFFF5F0E8),
@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFFF6B6B),
+              seedColor: const Color(0xFF0D9488),
               brightness: Brightness.dark,
             ),
             scaffoldBackgroundColor: const Color(0xFF121212),
@@ -62,7 +62,7 @@ class MyApp extends StatelessWidget {
                 return const Scaffold(
                   body: Center(
                     child: CircularProgressIndicator(
-                      color: Color(0xFFFF6B6B),
+                      color: Color(0xFF0D9488),
                     ),
                   ),
                 );

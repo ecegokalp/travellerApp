@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_widgets.dart';
 import 'profile_page.dart';
 
 class UserSearchPage extends StatefulWidget {
@@ -14,7 +15,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
   final AuthService _authService = AuthService();
   final TextEditingController _controller = TextEditingController();
 
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   static const _warmGray = Color(0xFF6B7280);
 
   String _query = '';
@@ -46,13 +47,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
     final textColor = isDark ? Colors.white : const Color(0xFF1F2937);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20), onPressed: () => Navigator.pop(context)),
-        title: Text('Travellers', style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w800, color: textColor)),
-      ),
+      appBar: const AppHeader(title: 'Travellers'),
       body: Column(
         children: [
           Padding(
@@ -144,18 +139,22 @@ class _UserSearchPageState extends State<UserSearchPage> {
     final photoUrl = (user['photoUrl'] ?? '').toString();
     final initial = fullName.isNotEmpty ? fullName[0].toUpperCase() : (username.isNotEmpty ? username[0].toUpperCase() : 'T');
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 4),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage(userId: user['uid']))),
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: _accent.withAlpha(30),
-        backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-        child: photoUrl.isEmpty ? Text(initial, style: const TextStyle(color: _accent, fontWeight: FontWeight.bold)) : null,
+    return SectionCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(vertical: 4),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage(userId: user['uid']))),
+        leading: CircleAvatar(
+          radius: 24,
+          backgroundColor: _accent.withAlpha(30),
+          backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+          child: photoUrl.isEmpty ? Text(initial, style: const TextStyle(color: _accent, fontWeight: FontWeight.bold)) : null,
+        ),
+        title: Text(fullName.isNotEmpty ? fullName : 'Traveller', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: textColor)),
+        subtitle: username.isNotEmpty ? Text('@$username', style: GoogleFonts.inter(color: _warmGray, fontSize: 13)) : null,
+        trailing: const Icon(Icons.chevron_right_rounded, color: _warmGray),
       ),
-      title: Text(fullName.isNotEmpty ? fullName : 'Traveller', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: textColor)),
-      subtitle: username.isNotEmpty ? Text('@$username', style: GoogleFonts.inter(color: _warmGray, fontSize: 13)) : null,
-      trailing: const Icon(Icons.chevron_right_rounded, color: _warmGray),
     );
   }
 

@@ -21,8 +21,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   final _currencyService = CurrencyService();
   Map<String, double>? _rates;
 
-  static const _coral = Color(0xFFFF6B6B);
-  static const _orange = Color(0xFFFF8E53);
+  static const _coral = Color(0xFF0D9488);
+  static const _orange = Color(0xFF2DD4BF);
 
   @override
   void initState() {

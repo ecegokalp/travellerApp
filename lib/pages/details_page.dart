@@ -9,7 +9,7 @@ class DestinationDetailPage extends StatelessWidget {
 
   const DestinationDetailPage({super.key, required this.destination});
 
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   static const _darkText = Color(0xFF1F2937);
   static const _warmGray = Color(0xFF6B7280);
 

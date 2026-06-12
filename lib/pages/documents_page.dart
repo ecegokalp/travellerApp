@@ -10,6 +10,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../services/auth_service.dart';
 import '../services/gemini_service.dart';
 import '../services/notification_service.dart';
+import '../widgets/app_widgets.dart';
 
 class DocumentsPage extends StatefulWidget {
   const DocumentsPage({super.key});
@@ -19,7 +20,7 @@ class DocumentsPage extends StatefulWidget {
 }
 
 class _DocumentsPageState extends State<DocumentsPage> {
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   final AuthService _authService = AuthService();
   final GeminiService _geminiService = GeminiService();
   final NotificationService _notificationService = NotificationService();
@@ -521,12 +522,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
     final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text('My Documents', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 20, color: textColor)),
-      ),
+      appBar: const AppHeader(title: 'My Documents'),
       floatingActionButton: user == null ? null : Padding(
         padding: const EdgeInsets.only(bottom: 90),
         child: FloatingActionButton(

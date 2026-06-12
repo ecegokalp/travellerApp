@@ -22,8 +22,8 @@ class _SettingsPageState extends State<SettingsPage> {
   String _photoUrl = '';
   bool _isUpdating = false;
 
-  static const _accent = Color(0xFFFF6B6B);
-  static const _accentLight = Color(0xFFFF8E53);
+  static const _accent = Color(0xFF0D9488);
+  static const _accentLight = Color(0xFF2DD4BF);
 
   @override
   void initState() {

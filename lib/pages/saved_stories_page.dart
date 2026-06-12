@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_widgets.dart';
 import 'profile_page.dart';
 
 class SavedStoriesPage extends StatelessWidget {
   const SavedStoriesPage({super.key});
 
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   static const _warmGray = Color(0xFF6B7280);
 
   @override
@@ -15,20 +16,9 @@ class SavedStoriesPage extends StatelessWidget {
     final authService = AuthService();
     final user = authService.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF1F2937);
-    final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text('Saved Stories', style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w800, fontSize: 20, color: textColor)),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      appBar: const AppHeader(title: 'Saved Stories'),
       body: user == null
           ? Center(child: Text('Please login', style: GoogleFonts.inter(color: Colors.grey)))
           : StreamBuilder<QuerySnapshot>(
@@ -75,13 +65,9 @@ class SavedStoriesPage extends StatelessWidget {
                     final city = blog['city'] ?? '';
                     final country = blog['country'] ?? '';
 
-                    return Container(
+                    return SectionCard(
                       margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 10, offset: const Offset(0, 4))],
-                      ),
+                      padding: EdgeInsets.zero,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

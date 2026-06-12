@@ -16,7 +16,7 @@ class PlaceSwipeCard extends StatefulWidget {
 class _PlaceSwipeCardState extends State<PlaceSwipeCard> {
   bool _showAerial = false;
 
-  static const _coral = Color(0xFFFF6B6B);
+  static const _coral = Color(0xFF0D9488);
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +245,7 @@ class _PlaceSwipeCardState extends State<PlaceSwipeCard> {
   }
 
   Widget _gradient(PlaceModel place) {
-    final colors = _gradients[place.category] ?? [_coral, const Color(0xFFFF8E53)];
+    final colors = _gradients[place.category] ?? [_coral, const Color(0xFF2DD4BF)];
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),

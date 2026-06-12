@@ -26,7 +26,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
   bool _loading = false;
   double _rating = 0;
 
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
 
   @override
   void initState() {

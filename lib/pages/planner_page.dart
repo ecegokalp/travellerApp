@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../services/gemini_service.dart';
 import '../services/notification_service.dart';
+import '../widgets/app_widgets.dart';
 
 class PlannerPage extends StatefulWidget {
   final Map<String, dynamic>? existingTrip;
@@ -78,7 +79,7 @@ class _PlannerPageState extends State<PlannerPage> {
   final _otherController = TextEditingController();
   String _otherCurrency = 'TRY';
 
-  static const _coral = Color(0xFFFF6B6B);
+  static const _coral = Color(0xFF0D9488);
 
   bool get _isEditing => widget.existingTrip != null;
 
@@ -726,8 +727,8 @@ class _PlannerPageState extends State<PlannerPage> {
         if (leave) Navigator.pop(context);
       },
       child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Plan Your Trip'),
+      appBar: AppHeader(
+        title: 'Plan Your Trip',
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1266,20 +1267,11 @@ class _PlannerPageState extends State<PlannerPage> {
                   ],
 
                   const SizedBox(height: 40),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isUploading ? null : _savePlan,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _coral,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: _isUploading 
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Save Trip Plan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
+                  GradientButton(
+                    label: 'Save Trip Plan',
+                    loading: _isUploading,
+                    icon: Icons.check_circle_rounded,
+                    onPressed: _isUploading ? null : _savePlan,
                   ),
                   const SizedBox(height: 100),
                 ],

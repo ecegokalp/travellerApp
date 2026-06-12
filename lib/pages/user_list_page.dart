@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_widgets.dart';
 import 'profile_page.dart';
 
 class UserListPage extends StatelessWidget {
@@ -21,15 +22,7 @@ class UserListPage extends StatelessWidget {
     final AuthService authService = AuthService();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title, style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      appBar: AppHeader(title: title),
       body: StreamBuilder<QuerySnapshot>(
         stream: isFollowers
             ? authService.getFollowers(userId)
@@ -52,34 +45,40 @@ class UserListPage extends StatelessWidget {
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.all(16),
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final uid = docs[index].id;
               return FutureBuilder<Map<String, dynamic>?>(
                 future: authService.getUserProfile(uid),
                 builder: (context, userSnap) {
-                  if (!userSnap.hasData) return const ListTile();
+                  if (!userSnap.hasData) return const SizedBox.shrink();
                   final user = userSnap.data!;
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFFF6B6B).withAlpha(30),
-                      child: Text(
-                        (user['fullName'] ?? 'T')[0].toUpperCase(),
-                        style: const TextStyle(color: Color(0xFFFF6B6B)),
-                      ),
-                    ),
-                    title: Text(user['fullName'] ?? 'Traveller',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                    subtitle: Text('@${user['username'] ?? ''}',
-                        style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ProfilePage(userId: uid),
+                  return SectionCard(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: kBrandPrimary.withAlpha(30),
+                        child: Text(
+                          (user['fullName'] ?? 'T')[0].toUpperCase(),
+                          style: const TextStyle(color: kBrandPrimary),
                         ),
-                      );
-                    },
+                      ),
+                      title: Text(user['fullName'] ?? 'Traveller',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      subtitle: Text('@${user['username'] ?? ''}',
+                          style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
+                      trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF6B7280)),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProfilePage(userId: uid),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               );

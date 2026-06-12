@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_widgets.dart';
 import 'user_list_page.dart';
 import 'settings_page.dart';
 import 'saved_stories_page.dart';
@@ -36,7 +37,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String get _effectiveUserId => widget.userId ?? _authService.currentUser?.uid ?? '';
   bool get _isMe => _effectiveUserId == _authService.currentUser?.uid;
 
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   static const _darkText = Color(0xFF1F2937);
   static const _warmGray = Color(0xFF6B7280);
 
@@ -110,18 +111,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final textColor = isDark ? Colors.white : _darkText;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Profile', style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w800, color: textColor)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
-                onPressed: () => Navigator.pop(context),
-              )
-            : null,
+      appBar: AppHeader(
+        title: 'Profile',
         actions: [
           if (_isMe) ...[
             IconButton(
@@ -150,7 +141,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Container(
                     width: 100, height: 100,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [_accent, Color(0xFFFF8E53)]),
+                      gradient: const LinearGradient(colors: [_accent, Color(0xFF2DD4BF)]),
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(color: _accent.withAlpha(50), blurRadius: 20, offset: const Offset(0, 10)),
@@ -370,7 +361,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     height: 54,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [_accent, Color(0xFFFF8E53)]),
+                        gradient: const LinearGradient(colors: [_accent, Color(0xFF2DD4BF)]),
                         borderRadius: BorderRadius.circular(18),
                         boxShadow: [BoxShadow(color: _accent.withAlpha(70), blurRadius: 16, offset: const Offset(0, 8))],
                       ),
@@ -568,7 +559,7 @@ class _VisitedPlacesPage extends StatefulWidget {
 }
 
 class _VisitedPlacesPageState extends State<_VisitedPlacesPage> {
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   static const _warmGray = Color(0xFF6B7280);
 
   late List<String> _manual;
@@ -612,16 +603,7 @@ class _VisitedPlacesPageState extends State<_VisitedPlacesPage> {
     final names = _names;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title, style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w800, color: textColor)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      appBar: AppHeader(title: title),
       body: Column(
         children: [
           if (widget.isMe)

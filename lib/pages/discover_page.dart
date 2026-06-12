@@ -19,8 +19,8 @@ class DiscoverPage extends StatefulWidget {
 class _DiscoverPageState extends State<DiscoverPage> {
   final AuthService _authService = AuthService();
 
-  static const _accent = Color(0xFFFF6B6B);
-  static const _accentLight = Color(0xFFFF8E53);
+  static const _accent = Color(0xFF0D9488);
+  static const _accentLight = Color(0xFF2DD4BF);
   static const _darkText = Color(0xFF1F2937);
   static const _warmGray = Color(0xFF6B7280);
 

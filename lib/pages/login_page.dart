@@ -30,9 +30,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   int _currentImageIndex = 0;
   Timer? _imageTimer;
 
-  static const _sunset = Color(0xFFFF6B6B);
+  static const _sunset = Color(0xFF0D9488);
   static const _sunsetDark = Color(0xFFE85D5D);
-  static const _orange = Color(0xFFFF8E53);
+  static const _orange = Color(0xFF2DD4BF);
   static const _deepBlue = Color(0xFF1A1D26);
   static const _white = Color(0xFFFFFFFF);
   static const _subtleText = Color(0xFF9CA3AF);
@@ -165,7 +165,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1F0),
+                    color: const Color(0xFFE0F7F5),
                     borderRadius: BorderRadius.circular(22),
                   ),
                   child: const Icon(Icons.lock_reset_rounded, size: 36, color: _sunset),

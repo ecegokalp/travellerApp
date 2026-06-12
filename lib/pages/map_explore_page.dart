@@ -38,8 +38,8 @@ class _MapExplorePageState extends State<MapExplorePage> {
   String _filter = 'All';
   Timer? _debounce;
 
-  static const _coral = Color(0xFFFF6B6B);
-  static const _orange = Color(0xFFFF8E53);
+  static const _coral = Color(0xFF0D9488);
+  static const _orange = Color(0xFF2DD4BF);
 
   static const _filters = ['All', 'Tourist', 'Cafes', 'Food', 'Bars', 'Historic', 'Parks'];
   static const _filterIcons = [
@@ -654,7 +654,7 @@ class _PlaceDetailSheetState extends State<_PlaceDetailSheet> {
   final _commentCtrl = TextEditingController();
   double _rating = 5;
 
-  static const _coral = Color(0xFFFF6B6B);
+  static const _coral = Color(0xFF0D9488);
 
   @override
   void initState() {
@@ -767,7 +767,7 @@ class _PlaceDetailSheetState extends State<_PlaceDetailSheet> {
                   onTap: _submitting ? null : _submit,
                   child: Container(
                     width: 40, height: 40,
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [_coral, Color(0xFFFF8E53)]), borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [_coral, Color(0xFF2DD4BF)]), borderRadius: BorderRadius.circular(12)),
                     child: _submitting
                         ? const Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
@@ -818,7 +818,7 @@ class _AddPlaceSheetState extends State<_AddPlaceSheet> {
   String _category = 'cafe';
   bool _submitting = false;
 
-  static const _coral = Color(0xFFFF6B6B);
+  static const _coral = Color(0xFF0D9488);
   static const _categories = {
     'cafe': '☕ Cafe',
     'restaurant': '🍽️ Restaurant',

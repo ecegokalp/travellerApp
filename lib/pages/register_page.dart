@@ -32,9 +32,9 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
   int _currentImageIndex = 0;
   Timer? _imageTimer;
 
-  static const _sunset = Color(0xFFFF6B6B);
+  static const _sunset = Color(0xFF0D9488);
   static const _sunsetDark = Color(0xFFE85D5D);
-  static const _orange = Color(0xFFFF8E53);
+  static const _orange = Color(0xFF2DD4BF);
   static const _deepBlue = Color(0xFF1A1D26);
   static const _white = Color(0xFFFFFFFF);
 

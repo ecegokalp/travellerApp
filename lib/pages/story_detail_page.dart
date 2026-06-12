@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_widgets.dart';
 
 class StoryDetailPage extends StatefulWidget {
   final String authorId;
@@ -22,7 +23,7 @@ class StoryDetailPage extends StatefulWidget {
 }
 
 class _StoryDetailPageState extends State<StoryDetailPage> {
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   static const _warmGray = Color(0xFF6B7280);
 
   late int _likeCount;
@@ -159,12 +160,8 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
     final rating = (b['rating'] as num?)?.toDouble() ?? 0;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20), onPressed: () => Navigator.pop(context)),
-        title: Text(b['authorName'] ?? 'Story', style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w800, color: textColor)),
-        centerTitle: true,
+      appBar: AppHeader(
+        title: b['authorName'] ?? 'Story',
         actions: [
           if (_isOwner)
             PopupMenuButton<String>(
@@ -272,7 +269,7 @@ class StoryCommentsSheet extends StatefulWidget {
 }
 
 class _StoryCommentsSheetState extends State<StoryCommentsSheet> {
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   final _controller = TextEditingController();
 
   @override

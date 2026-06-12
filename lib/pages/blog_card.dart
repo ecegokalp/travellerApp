@@ -19,7 +19,7 @@ class BlogCard extends StatefulWidget {
 }
 
 class _BlogCardState extends State<BlogCard> {
-  static const _accent = Color(0xFFFF6B6B);
+  static const _accent = Color(0xFF0D9488);
   static const _warmGray = Color(0xFF6B7280);
 
   bool _liked = false;
