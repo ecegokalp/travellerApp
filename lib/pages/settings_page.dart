@@ -5,6 +5,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
 import '../main.dart';
+import 'help_center_page.dart';
+import 'about_app_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -211,11 +213,11 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               child: Column(
                 children: [
-                  _buildSettingTile(context, icon: Icons.help_outline_rounded, title: 'Help Center', onTap: () {}),
+                  _buildSettingTile(context, icon: Icons.help_outline_rounded, title: 'Help Center', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterPage()))),
                   Divider(height: 1, indent: 60, color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
                   _buildSettingTile(context, icon: Icons.privacy_tip_outlined, title: 'Privacy Policy', onTap: () {}),
                   Divider(height: 1, indent: 60, color: isDark ? Colors.white10 : const Color(0xFFE8E4DC)),
-                  _buildSettingTile(context, icon: Icons.info_outline_rounded, title: 'About App', onTap: () {}),
+                  _buildSettingTile(context, icon: Icons.info_outline_rounded, title: 'About App', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutAppPage()))),
                 ],
               ),
             ),
