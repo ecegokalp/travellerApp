@@ -1,162 +1,175 @@
-1-Requirements
+# Wander
 
-To run this app on your computer, you need the tools below:
+A travel planning app built with Flutter that helps you discover places on an interactive map, plan day-by-day trips, keep your travel documents organised, and share your journeys with a community of travellers. AI (Google Gemini) writes your trip checklists and itineraries, drafts blog posts, and reads your tickets to fill your calendar automatically.
 
-*Flutter SDK (Recommended: Version 3.24.3)
-    Flutter is a tool for building mobile apps.
-    You can download from this link : https://docs.flutter.dev/get-started/install
+## Features
 
-*Dart SDK (included with Flutter)
-    Dart is the programming language used in Flutter. You don't need to install it separately. It comes with Flutter.
+**Map based place discovery.** Search any city in the world and explore real places pulled live from OpenStreetMap (Overpass) — attractions, museums, historic sites, cafes, restaurants, bars, parks and more. Places are enriched with photos and a popularity rating from Wikidata, shown on an interactive map and as a swipeable card deck: swipe right to save a place to your liked list, swipe left to skip. You can also add your own places with a photo and leave star reviews on any place.
 
-*Android Studio or Visual Studio Code
+**Trip planning.** Create a trip for a destination with start and end dates, hotel details (name, price, check-in / check-out), and a budget split across flights, food, transport, hotel, individual places and a custom limit. All amounts are entered in any of TRY / EUR / USD / GBP and converted to a single total using live exchange rates. Each trip gets an auto-generated checklist and a day-by-day itinerary, and its dates sync to the home calendar.
 
-  You can open and run the app with one of these programs:
-  -Android Studio : https://developer.android.com/studio
-  -VS Code (Visual Studio Code) : https://code.visualstudio.com/
+**AI assistance (Google Gemini).** Gemini powers four distinct features: it generates a country-specific travel checklist (visa, currency, adaptor, health, customs, packing), builds a day-by-day itinerary with timed activities and meals, drafts an engaging blog post for a city with one tap, and reads uploaded tickets and bookings to extract dates, prices and locations into calendar events.
 
-  After you install these programs you have to install Flutter and Dart extensions inside them.
-  How to install Flutter and Dart Extensions in Android Studio?
-  1) Open Android Studio
-  2) Click on Plugins (on the welcome screen, look bottom right)
-  3) Go to "Marketplace" and search for Flutter
-  4) Click install. After that Android Studio will show a pop-up saying Flutter plugin requires Dart. Click install again.
-  5) Restart Android Studio
+**Travel documents.** Upload flight tickets, hotel confirmations and other documents as PDF, image or straight from the camera. Files are stored in Firebase Storage, and Gemini reads each document to pull out the important dates and add them to your travel calendar automatically. Manual entry is also supported.
 
-  The steps are very similar in Visual Studio Code.
+**Travel calendar.** A calendar on the home page collects all your trips and documents in one place, with colour-coded markers for flights, hotels, transport and tickets. Local notifications remind you about upcoming events one day before and three hours before.
 
-*Firebase Account
-  Firebase is used to save data and manage user login/register in this app.
+**Social feed and stories.** Write travel stories with photos, a location and a star rating, then publish them to a community feed. Browse an Explore feed of everyone's stories or a Following feed of people you follow, and like, comment on, save and share any post. Follow other travellers, see their visited countries and cities, and get push notifications when someone likes, comments on, saves or follows you.
 
-*Google Generative AI (Gemini) API Key
-  Gemini is used for AI-powered features like itinerary generation, checklist creation and document extraction.
-  You can get a free API key from : https://aistudio.google.com
+**Profiles.** Each profile shows a photo, bio, follower and following counts, visited countries and cities, and a grid of published stories. You can edit your own bio and photo, add places you have visited, and bookmark stories to read later.
 
----------------------------------------------------------------------------------
+**Other.** Email/password and Google sign-in with password reset, light and dark themes, a glassmorphic bottom navigation bar, an in-app Help Center and About page.
 
-2-How to Run the App
+## Tech stack
 
-Step 1: Download the .zip file that includes the project codes.
-Right click on it and choose 'Extract' to get the project folder.
+- Flutter (Dart) for the mobile app
+- Firebase: Authentication (email/password + Google), Cloud Firestore, Storage
+- Google Gemini (`gemini-2.5-flash`) for checklists, itineraries, blog drafts and document extraction
+- OpenStreetMap Nominatim (city search) and Overpass (places); Wikidata + Wikimedia Commons (images and popularity)
+- Frankfurter API for live currency exchange rates
+- `flutter_map` for maps, `flutter_card_swiper` for the swipe deck, `table_calendar` for the calendar
+- `flutter_local_notifications` with `timezone` for reminders
+- `google_fonts` (Playfair Display + Inter) for typography
 
-Step 2: Open one of the programs (Android Studio or VS Code).
-Click open folder and select the extracted project folder.
+## Screenshots
 
-Step 3: Open the terminal in your project folder.
-First type:
-    flutter pub get
-This command installs all the needed packages.
+| Map explore + swipe deck | Place detail & reviews | Travel calendar |
+| --- | --- | --- |
+| ![Map](docs/screenshots/map.png) | ![Place detail](docs/screenshots/place_detail.png) | ![Calendar](docs/screenshots/calendar.png) |
 
-Step 4: To see the app you should use an emulator.
-  - Click Create Device
-  - Choose a phone model
-  - Click Next
-  - Download a system image
-  - Click Next to finish
-  - Then click the green Run button to start the emulator
+| Trip planner | AI itinerary | AI checklist |
+| --- | --- | --- |
+| ![Planner](docs/screenshots/planner.png) | ![Itinerary](docs/screenshots/itinerary.png) | ![Checklist](docs/screenshots/checklist.png) |
 
-You can also use your physical phone with a proper USB cable.
+| Documents (AI extraction) | Discover feed | Profile |
+| --- | --- | --- |
+| ![Documents](docs/screenshots/documents.png) | ![Feed](docs/screenshots/feed.png) | ![Profile](docs/screenshots/profile.png) |
 
--------------------------------------------------------------------------------------
+## Flutter version
 
-3-Firebase Setup
+This project was built and tested with:
 
-This app uses Firebase to manage users and data.
-You need a file called google-services.json in this path:
-    android/app/google-services.json
+- Flutter **3.41.4** (stable channel)
+- Dart **3.11.1**
 
-You also need GoogleService-Info.plist for iOS:
-    ios/Runner/GoogleService-Info.plist
+Newer Flutter 3.x versions should also work. You can check your own version with `flutter --version`.
 
-These files are not included in the repository for security reasons.
-To get them:
-  1) Go to https://console.firebase.google.com
-  2) Create a new project
-  3) Add an Android app and an iOS app to your project
-  4) Download the config files and place them in the paths above
-  5) Enable Authentication (Email/Password and Google Sign-In)
-  6) Enable Firestore Database and Firebase Storage
+## Getting started
 
----------------------------------------------------------------------------------------
+If you have never run a Flutter project before, follow every step below in order.
 
-4-Flutter Version
+### 1. Install the tools
 
-*Flutter 3.24.3
-*Dart 3.5.3
+1. **Install Flutter.** Download and install the Flutter SDK from <https://docs.flutter.dev/get-started/install> (Dart comes bundled with it — you do not need to install Dart separately). After installing, open a terminal and run `flutter doctor` to confirm everything is set up.
+2. **Install an editor.** Install [Android Studio](https://developer.android.com/studio) (recommended) or [Visual Studio Code](https://code.visualstudio.com/).
+3. **Add the Flutter and Dart plugins** to your editor:
+   - In Android Studio: open **Plugins** → **Marketplace**, search for **Flutter**, click **Install** (it will also install the Dart plugin), then restart.
+   - In VS Code: open the Extensions panel, search for **Flutter**, and install it (the Dart extension installs automatically).
 
-----------------------------------------------------------------------------------------
+### 2. Open the project
 
-5-YouTube Video Link : https://www.youtube.com/watch?v=OH-QklAjjgo
+1. Unzip the project folder (or clone the repository).
+2. In Android Studio choose **File → Open** (or **Open Folder** in VS Code) and select the `traveller_app` folder — open the whole folder, not a single file.
+3. Open the built-in terminal inside your editor (it should already be pointing at the project folder) and run:
 
-------------------------------------------------------------------------------------------
+```bash
+flutter pub get
+```
 
-6-User Manual
+This downloads all the packages the app needs.
 
-How to Register & Sign-In
+### 3. Add the Firebase configuration
 
-Since our application is a travel planning app, it requires users to register to the system. When users open the application, they will see email, password, login and register fields. If users don't have an account, they can click 'Register Now' and fill in the email and password fields. If they already have an account, they just enter their email and password to log in. Users can also log in with Google Sign-In by clicking the button. Forgot Password option is also available on the login screen — a reset email will be sent.
+The app uses Firebase for login, data and file storage. For security, the Firebase config files are **not** included in this repository, so you need to create your own free Firebase project and add them:
 
+1. Go to <https://console.firebase.google.com> and create a new project.
+2. In the project, enable these products:
+   - **Authentication** → enable **Email/Password** and **Google** sign-in.
+   - **Cloud Firestore** (create a database).
+   - **Storage**.
+3. Add an **Android app** to the project, then download `google-services.json` and place it at:
 
-Main Screen
+   ```
+   android/app/google-services.json
+   ```
 
-After logging in, users will see the Home Page with a calendar showing upcoming trips and a bottom navigation bar with 5 tabs:
+4. The easiest way to generate the Dart config is the FlutterFire CLI. Install it and run it from the project folder:
 
-1 Home - Displays the trip calendar, active trip checklists and a welcome message with profile photo.
+   ```bash
+   dart pub global activate flutterfire_cli
+   flutterfire configure
+   ```
 
-2 Discover (Wander Feed) - A swipe-based feed where users can discover nearby places.
+   This creates `lib/firebase_options.dart` for you. (If you add an iOS app, it also produces `ios/Runner/GoogleService-Info.plist`.)
 
-3 Map - An interactive map for exploring places around any location.
+### 4. Add the Gemini API key
 
-4 Documents - A page for uploading and managing travel documents like flight tickets and hotel bookings.
+The AI features use Google Gemini. Get a free API key from <https://aistudio.google.com>, then create a file named `env.json` in the **root** of the project (next to `pubspec.yaml`) with this content:
 
-5 Profile - Shows user bio, visited countries & cities, followers/following, and published travel stories.
+```json
+{
+  "GEMINI_API_KEY": "PASTE_YOUR_KEY_HERE"
+}
+```
 
+This file is gitignored and stays on your machine. (Alternatively you can pass the key at run time with `flutter run --dart-define=GEMINI_API_KEY=YOUR_KEY`.)
 
-How to Discover Places
+### 5. Run the app
 
-Users should tap the Discover tab to open the Wander Feed.
-Swipe through place cards to explore nearby destinations. Each card shows the place name, category, rating and photos. A live map above the card shows the location of the current place. Users can toggle satellite view on any card. If a place looks interesting, tap the save icon to add it to saved places.
+1. Start a device:
+   - **Emulator:** in Android Studio open **Device Manager → Create Device**, pick a phone, download a system image, and start it. **or**
+   - **Real phone:** enable Developer Options + USB debugging and plug it in with a USB cable.
+2. Run the app:
 
+```bash
+flutter run
+```
 
-How to Plan a Trip
+The app will build and launch on your device. Create an account on the register screen, and you are ready to go.
 
-Users should tap the Home tab and select an existing trip or create a new one.
-Inside the trip users can:
-  - Add day-by-day activities using the planner (AI can suggest a full itinerary)
-  - Set hotel check-in and check-out dates manually
-  - Track the trip budget with currency conversion
-  - View an auto-generated checklist for the trip
+## Project structure
 
-All trip dates sync automatically to the calendar on the Home Page.
+```
+lib/
+  main.dart                       app entry, Firebase init, theme, auth gate
+  firebase_options.dart           generated Firebase config (gitignored)
+  pages/
+    login_page.dart               email/Google sign-in with animated background
+    register_page.dart            account creation
+    main_screen.dart              bottom navigation shell (5 tabs)
+    home_page.dart                trips, checklists, travel calendar, notifications
+    discover_page.dart            community + following story feed
+    map_explore_page.dart         map, place search, swipe deck, reviews, add place
+    documents_page.dart           upload documents, AI extraction to calendar
+    profile_page.dart             profile, stats, followers, stories
+    planner_page.dart             create / edit a trip (budget, checklist, itinerary)
+    trip_details_page.dart        view a planned trip
+    blog_page.dart                story composer with AI writer + helpers
+    blog_card.dart                story card used in the feed
+    story_detail_page.dart        full story view, like / comment / save / share
+    saved_stories_page.dart       bookmarked stories
+    user_search_page.dart         search travellers by username
+    user_list_page.dart           followers / following lists
+    details_page.dart             popular destination detail
+    settings_page.dart            profile edit, dark mode, logout
+    help_center_page.dart         FAQ / help
+    about_app_page.dart           app info
+    place_swipe_card.dart         swipeable place card widget
+  services/
+    auth_service.dart             auth, profiles, follows, blogs, notifications
+    gemini_service.dart           Gemini: checklist, itinerary, blog, document parsing
+    place_service.dart            Nominatim / Overpass / Wikidata + user places + reviews
+    currency_service.dart         live exchange rates and conversion
+    notification_service.dart     local notifications / event reminders
+  models/
+    place_model.dart              place + city data models
+    review_model.dart             place review model
+  widgets/
+    app_widgets.dart              shared UI widgets
+env.json                          your Gemini API key (gitignored)
+android/app/google-services.json  your Firebase Android config (gitignored)
+```
 
+## Demo video
 
-How to Manage Travel Documents
-
-Users should tap the Documents tab.
-Documents like flight tickets or hotel bookings can be uploaded from the device. The AI will automatically read the document and extract important dates, syncing them to the trip calendar. Manual entry is also supported.
-
-
-How to Use the Blog Page
-
-Users should tap the Blog tab to browse travel stories from all users.
-Stories are shown in a card layout. Users can like, comment on, save and share posts.
-To write a story, tap the + button, add photos, write the content and publish.
-Users receive a notification when someone likes, comments on or saves their post.
-
-
-Profile Page
-
-Users should tap the Profile tab to view their profile.
-From here users can:
-  - Edit their bio by tapping the edit icon
-  - View visited countries and cities — tap either section to see the list and add new entries manually
-  - See followers and following by tapping the counts
-  - Browse all published travel stories in a grid
-
-Other Details
-
-Tap Forgot Password on the login screen to receive a password reset email.
-Tap Log Out in the settings page to exit your session.
-Dark mode can be toggled from the settings page.
-Users receive push notifications when someone likes, comments on or saves their blog post, or when a new user follows them.
-A Help Center is available in settings with a full guide to all features of the app.
+YouTube: https://www.youtube.com/watch?v=OH-QklAjjgo
